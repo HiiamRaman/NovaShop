@@ -7,9 +7,10 @@ import { useCartStore } from "@/store/cartStore";
 
 type productCardProps = {
   product: Product;
+
 };
 
-function ProductCard({ product }: productCardProps) {
+function ProductCard({ product}: productCardProps) {
   const addToCart = useCartStore((state) => state.addToCart);
 
   return (
@@ -43,7 +44,7 @@ function ProductCard({ product }: productCardProps) {
       {/* 2. Decoupled Add to Cart Button (Kept safely outside of the Link) */}
       <button
         className="mt-5 w-full bg-black text-white py-2.5 rounded-md font-medium hover:bg-gray-800 transition-colors cursor-pointer"
-        onClick={() => addToCart(product)}
+        onClick={() => addToCart(product,1)}
       >
         Add To Cart
       </button>

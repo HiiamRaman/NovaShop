@@ -1,7 +1,7 @@
 "use client";
 
 import { useCartStore } from "@/store/cartStore";
-
+import Link from "next/link";
 export default function CartSummary() {
   const cart = useCartStore((state) => state.cart);
 
@@ -44,21 +44,24 @@ export default function CartSummary() {
           <span>${subTotal.toFixed(2)}</span>
         </div>
 
-        <button
+        <Link
+          href="/checkout"
           className="
-            w-full
-            mt-6
-            rounded-full
-            bg-emerald-600
-            py-3
-            font-semibold
-            text-white
-            transition
-            hover:bg-emerald-700
-          "
+    block
+    w-full
+    mt-6
+    rounded-full
+    bg-emerald-600
+    py-3
+    text-center
+    font-semibold
+    text-white
+    transition
+    hover:bg-emerald-700
+  "
         >
           Proceed to Checkout
-        </button>
+        </Link>
       </div>
     </div>
   );

@@ -5,3 +5,7 @@ export interface CartItem {
     thumbnail:string;
     quantity:number
 }
+
+
+
+
