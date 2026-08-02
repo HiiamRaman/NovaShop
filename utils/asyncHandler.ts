@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { ApiError } from "./ApiError";
-import { success } from "zod";
+import { ZodError } from "zod";
 type AsyncHandler = (...args: any[]) => Promise<Response>;
 export const asyncHandler = (fn: AsyncHandler) => {
   return async (...args: any[]) => {
@@ -17,9 +17,23 @@ export const asyncHandler = (fn: AsyncHandler) => {
             success: false,
             message: error.message,
             errors: error.errors,
-            data: error.data,
+            data: null,
           },
           { status: error.statusCode }
+        );
+      }
+      //zod error
+      if (error instanceof ZodError) {
+        console.error("Zod Validation Error:", error);
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Validation failed",
+            errors: error.issues,
+          },
+          {
+            status: 400,
+          }
         );
       }
 

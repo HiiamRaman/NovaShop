@@ -4,10 +4,10 @@ export class ApiResponse {
   message: string;
   data: unknown ;
 
-  constructor(statusCode: number, data:unknown = null, message: string = "Success") {
+  constructor(statusCode: number,  message: string = "Success",data:unknown = null) {
     this.statusCode = statusCode;
-    this.data = data;
     this.message = message;
+    this.data = data;
     this.success = statusCode < 400;
   }
 }

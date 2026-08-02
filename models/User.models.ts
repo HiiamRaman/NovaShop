@@ -1,7 +1,5 @@
 import mongoose from "mongoose";
 
-
-
 const userSchema = new mongoose.Schema(
   {
     fullName: {
@@ -13,7 +11,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      lowercase:true,
+      lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, "Invalid email format"], //validation
     },
@@ -21,9 +19,9 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minLength: 8,
-     
+      select:false
     },
- 
+
     role: {
       type: String,
       enum: ["user", "admin"],
