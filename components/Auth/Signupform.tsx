@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { signupSchema, signupFormData } from "@/schemas/signupSchema";
+import { signupSchema } from "@/schemas/signupSchema";
+import type { SignupFormData } from "@/schemas/signupSchema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -14,11 +15,11 @@ function SignupForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<signupFormData>({
+  } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
   });
 
-  function onSubmit(data: signupFormData) {
+  function onSubmit(data: SignupFormData) {
     console.log(data);
   }
 
@@ -41,12 +42,14 @@ function SignupForm() {
           </label>
 
           <input
-            {...register("name")}
-            placeholder="John Doe"
+            {...register("fullName")}
+            placeholder="Lewis Hamilton"
             className={inputClass}
           />
 
-          <p className="mt-1 text-xs text-red-500">{errors.name?.message}</p>
+          <p className="mt-1 text-xs text-red-500">
+            {errors.fullName?.message}
+          </p>
         </div>
 
         <div>
@@ -79,7 +82,7 @@ function SignupForm() {
 
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => setShowPassword((prev) => !prev)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -106,7 +109,7 @@ function SignupForm() {
 
             <button
               type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              onClick={() => setShowConfirmPassword((prev) => !prev)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800"
             >
               {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}

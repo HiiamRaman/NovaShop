@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
-import { minLength } from "zod";
+
+
 
 const userSchema = new mongoose.Schema(
   {
-    fullname: {
+    fullName: {
       type: String,
       required: true,
       trim: true,
@@ -12,24 +13,22 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      lowercase:true,
       trim: true,
-      match: [/^\S+@\S+\.\S+$/, "Invalid email format"],  //validation
+      match: [/^\S+@\S+\.\S+$/, "Invalid email format"], //validation
     },
     password: {
       type: String,
       required: true,
-      minLength:8,
-      trim: true,
+      minLength: 8,
+     
     },
-    confirmPassword: {
+ 
+    role: {
       type: String,
-      required: true,
+      enum: ["user", "admin"],
+      default: "user",
     },
-    role:{
-        type:String,
-        enum:["user", "admin"],
-        default:'user'
-    }
   },
   { timestamps: true }
 );
