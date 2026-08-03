@@ -39,7 +39,6 @@ export async function loginUser(data: LoginFormData) {
 
   // Compare plain password with the stored bcrypt hash
   const isPasswordCorrect = await comparePassword(password, user.password);
- 
 
   if (!isPasswordCorrect) {
     throw new ApiError(401, "Invalid email or password");
