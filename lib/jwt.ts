@@ -53,3 +53,29 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
     throw new ApiError(401, "Invalid or expired access token");
   }
 }
+export function verifyRefreshToken(token: string): RefreshTokenPayload {
+  try {
+    const decoded = jwt.verify(token, env.REFRESH_TOKEN_SECRET, {
+      issuer: "novashop",
+      audience: "novashop-users",
+      algorithms: ["HS256"],
+    });
+
+    if (
+      typeof decoded === "string" ||
+      typeof decoded.sub !== "string" ||
+      typeof decoded.sessionId !== "string" ||
+      decoded.tokenType !== "refresh"
+    ) {
+      throw new Error("Invalid refresh-token payload");
+    }
+
+    return {
+      sub: decoded.sub,
+      sessionId: decoded.sessionId,
+      tokenType: decoded.tokenType,
+    };
+  } catch {
+    throw new ApiError(401, "Invalid or expired refresh token");
+  }
+}

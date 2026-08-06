@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { verifyAccessToken } from "@/lib/jwt";
 
-import { AccessTokenPayload } from "@/types/token.types";
+import type { AccessTokenPayload } from "@/types/token.types";
 import { ApiError } from "./ApiError";
 
 export function requireAuth(request: NextRequest): AccessTokenPayload {
