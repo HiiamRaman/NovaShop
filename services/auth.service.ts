@@ -26,6 +26,7 @@ import {
   verifyRefreshToken,
 } from "@/lib/jwt";
 import { env } from "@/lib/env";
+import { NextResponse } from "next/server";
 
 export async function registerUser(data: SignupFormData) {
   const { fullName, email, password } = data;
@@ -213,3 +214,4 @@ export async function removeUserSession(
     throw new ApiError(400, "Active session not found");
   }
 }
+
