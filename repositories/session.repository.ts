@@ -58,12 +58,26 @@ export async function revokeSessionById(sessionId: string) {
     }
   );
 }
+export async function revokeAllSessionsByUserId(userId: string) {
+  return Session.updateMany(
+    {
+      userId,
+      revokedAt: null,
+      expiresAt: {
+        $gt: new Date(),
+      },
+    },
+    {
+      $set: {
+        revokedAt: new Date(),
+      },
+    }
+  );
+}
+
 // Used when a user removes another logged-in device.
 // Both ownership and session identity must match.
-export async function revokeUserSessionById(
-  userId: string,
-  sessionId: string
-) {
+export async function revokeUserSessionById(userId: string, sessionId: string) {
   return Session.findOneAndUpdate(
     {
       userId,
@@ -83,14 +97,15 @@ export async function revokeUserSessionById(
     }
   );
 }
-export async function  findActiveSessionsByUserId (userId:string){
-
+export async function findActiveSessionsByUserId(userId: string) {
   return Session.find({
-    userId,revokedAt:null,expiresAt:{
-      $gt:new Date(),
-    }
-
-  }).select('sessionId userAgent  lastUsedAt  expiresAt  createdAt -_id ').sort({lastUsedAt:-1}).lean()
-
-
+    userId,
+    revokedAt: null,
+    expiresAt: {
+      $gt: new Date(),
+    },
+  })
+    .select("sessionId userAgent  lastUsedAt  expiresAt  createdAt -_id ")
+    .sort({ lastUsedAt: -1 })
+    .lean();
 }
