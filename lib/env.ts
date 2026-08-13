@@ -7,6 +7,9 @@ export const env = createEnv({
     ACCESS_TOKEN_EXPIRY: z.coerce.number().int().positive(),
     REFRESH_TOKEN_SECRET: z.string().min(64),
     REFRESH_TOKEN_EXPIRY: z.coerce.number().int().positive(),
+    CLOUDINARY_CLOUD_NAME: z.string().min(1),
+    CLOUDINARY_API_KEY: z.string().min(1),
+    CLOUDINARY_API_SECRET: z.string().min(1),
   },
   runtimeEnv: {
     MONGODB_URI: process.env.MONGODB_URI,
@@ -14,5 +17,8 @@ export const env = createEnv({
     ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY,
     REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET,
     REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY,
+    CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+    CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
   },
 });

@@ -21,7 +21,7 @@ async function ProductsPage({ searchParams }: ProductsPageProps) {
   const { search, category, sort, page } = await searchParams;
 
   const products = await getProducts();
- 
+
   const filteredProducts = filterProducts(products, {
     search,
     category,
