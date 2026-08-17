@@ -82,15 +82,16 @@ const productSchema = new mongoose.Schema(
       default: "USD",
       required: true,
     },
-    stock: {
-      type: Number,
-      required: true,
-      min: 0,
-      validate: {
-        validator: Number.isInteger,
-        message: "Stock must be a whole number",
-      },
-    },
+   stock: {
+  type: Number,
+  required: true,
+  default: 0,
+  min: 0,
+  validate: {
+    validator: Number.isInteger,
+    message: "Stock must be a whole number",
+  },
+},
     images: {
       type: [productImageSchema],
       default: [],

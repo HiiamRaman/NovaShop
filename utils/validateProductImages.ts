@@ -1,7 +1,7 @@
 import { ApiError } from "./ApiError";
 const MAX_IMAGE_COUNT = 8;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; //5mb
-const ALLOWED_IMAGE_TYPES = ["images/jpeg", "images/png", "images/webp"];
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export function validateProductImages(entries: FormDataEntryValue[]): File[] {
   if (entries.length === 0) {
     throw new ApiError(400, "At least one product image is required");

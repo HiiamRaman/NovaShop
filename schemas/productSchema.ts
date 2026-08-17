@@ -27,17 +27,14 @@ export const createProductSchema = z.object({
     .min(2, "SKU is required")
     .max(100, "SKU cannot exceed 100 characters"),
 
-  priceInMinorUnit: z
+  priceInMinorUnit: z.coerce
     .number()
     .int("Price must be a whole number")
     .min(0, "Price cannot be negative"),
 
   currency: z.enum(["NPR", "USD"]).default("USD"),
 
-  stock: z
-    .number()
-    .int("Stock must be a whole number")
-    .min(0, "Stock cannot be negative"),
+
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;

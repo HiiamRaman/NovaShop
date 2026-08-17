@@ -2,16 +2,14 @@ import "server-only";
 
 import type { UploadApiResponse } from "cloudinary";
 import { cloudinary } from "./cloudinary";
-import { ProductImageData } from "@/types/products.types";
-
-export async function uploadImage(file: File): Promise<UploadApiResponse> {
-  // Convert the Web API File into binary data
+import type { ProductImageData } from "@/types/products.types";
+export async function uploadImage(
+  file: File
+): Promise<UploadApiResponse> {
   const arrayBuffer = await file.arrayBuffer();
-
-  // Convert ArrayBuffer into a Node.js Buffer
   const buffer = Buffer.from(arrayBuffer);
 
-  return new Promise((resolve, reject) => {
+  return new Promise<UploadApiResponse>((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: "novashop/products",
@@ -24,7 +22,9 @@ export async function uploadImage(file: File): Promise<UploadApiResponse> {
         }
 
         if (!result) {
-          reject(new Error("Cloudinary did not return an upload result"));
+          reject(
+            new Error("Cloudinary did not return an upload result")
+          );
           return;
         }
 
@@ -35,6 +35,7 @@ export async function uploadImage(file: File): Promise<UploadApiResponse> {
     uploadStream.end(buffer);
   });
 }
+
 
 export async function uploadProductImages(
   files: File[]
