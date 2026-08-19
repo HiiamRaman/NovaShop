@@ -6,6 +6,7 @@ import type {
   ProductPaginationOptions,
   PublicProductQueryOptions,
   ProductSortOption,
+  UpdateProductData,
 } from "@/types/products.types";
 
 export async function findProductBySlug(slug: string) {
@@ -79,11 +80,10 @@ export async function findActiveProducts(options: PublicProductQueryOptions) {
     .limit(options.limit);
 }
 
-
 export async function CountActiveProducts(
   options: PublicProductQueryOptions
 ): Promise<number> {
-  const filter =  await  buildPublicProductFilter(options);
+  const filter = await buildPublicProductFilter(options);
 
   return Product.countDocuments(filter);
 }
@@ -132,3 +132,58 @@ export async function updateProductStockById(productId: string, stock: number) {
     }
   );
 }
+
+export async function updateProductById(
+  productId: string,
+  data: UpdateProductData
+) {
+  return Product.findOneAndUpdate(
+    {
+      _id: productId,
+      isDeleted: false,
+    },
+    {
+      $set: data,
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+}
+
+export async function softDeleteProductById(productId: string) {
+  return Product.findByIdAndUpdate(
+    {
+      _id: productId,
+      isDeleted: false,
+    },
+    {
+      $set: {
+        isDeleted: true,
+        status: "archived",
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+}
+
+export async function restoreProductById(productId: string) {
+  return Product.findByIdAndUpdate(
+    { _id: productId, isDeleted: true },
+    {
+      $set: {
+        isDeleted: false,
+        status: "draft",
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+}
+

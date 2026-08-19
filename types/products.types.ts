@@ -53,3 +53,15 @@ export interface PublicProductQueryOptions {
   sort: ProductSortOption;
 }
 
+
+
+export interface UpdateProductData {
+  name?: string;
+  slug?: string;
+  description?: string;
+  brand?: string;
+  category?: string;
+  sku?: string;
+  priceInMinorUnit?: number;
+  currency?: ProductCurrency;
+}

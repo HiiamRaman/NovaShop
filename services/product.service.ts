@@ -3,6 +3,7 @@ import {
   Product,
   ProductImageData,
   PublicProductQueryOptions,
+  UpdateProductData,
 } from "@/types/products.types";
 
 import { findCategoryById } from "@/repositories/category.repository";
@@ -11,13 +12,14 @@ import {
   findProductBySku,
   findProductBySlug,
 } from "@/repositories/product.repository";
-import { createSlug } from "@/utils/createSlug";
+
 import { ApiError } from "@/utils/ApiError";
 import {
   CreateProductInput,
   ProductListInput,
   UpdateProductStatusInput,
   UpdateProductStockInput,
+  updateProductInput,
 } from "@/schemas/productSchema";
 import {
   countProducts,
@@ -27,8 +29,11 @@ import {
   updateProductStatusById,
   findActiveProductBySlug,
   updateProductStockById,
+  updateProductById,
+  softDeleteProductById,
+  restoreProductById,
 } from "@/repositories/product.repository";
-
+import { createSlug } from "@/utils/createSlug";
 import mongoose from "mongoose";
 
 export async function getProducts(): Promise<Product[]> {
@@ -166,7 +171,7 @@ export async function getPublicProducts(input: ProductListInput) {
   const { page, limit, search, categoryId, brand, sort } = input;
   // Convert page-based pagination into database skip
   const skip = (page - 1) * limit;
-    // Prepare the options required by the repository
+  // Prepare the options required by the repository
   const queryOptions: PublicProductQueryOptions = {
     skip,
     limit,
@@ -271,5 +276,116 @@ export async function changeProductstock(
     sku: product.sku,
     stock: product.stock,
     updatedAt: product.updatedAt,
+  };
+}
+export async function editProduct(
+  productId: string,
+  input: updateProductInput
+) {
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new ApiError(400, "Invalid ProductId");
+  }
+  const updateData: UpdateProductData = {};
+
+  // A name change also requires a new unique slug
+  if (input.name !== undefined) {
+    const slug = createSlug(input.name);
+    const productWithSlug = await findProductBySlug(slug);
+
+    if (productWithSlug && productWithSlug._id.tostring() !== productId) {
+      throw new ApiError(409, "Product slug already exists");
+    }
+    updateData.name = input.name;
+    updateData.slug = slug;
+  }
+
+  if (input.description !== undefined) {
+    updateData.description = input.description;
+  }
+  if (input.brand !== undefined) {
+    updateData.brand = input.brand;
+  }
+
+  if (input.categoryId !== undefined) {
+    const category = await findCategoryById(input.categoryId);
+    if (!category || !category.isActive) {
+      throw new ApiError(404, "Invalid or inactive category");
+    }
+
+    updateData.category = input.categoryId;
+  }
+  if (input.sku !== undefined) {
+    const normalizedSku = input.sku.toUpperCase();
+    const productWithSku = await findProductBySku(normalizedSku);
+    if (productWithSku && productWithSku._id.toString() !== productId) {
+      throw new ApiError(400, "Product SKU already exists");
+    }
+    updateData.sku = normalizedSku;
+  }
+
+  if (input.priceInMinorUnit !== undefined) {
+    updateData.priceInMinorUnit = input.priceInMinorUnit;
+  }
+
+  if (input.currency !== undefined) {
+    updateData.currency = input.currency;
+  }
+
+  const product = await updateProductById(productId, updateData);
+
+  if (!product) {
+    throw new ApiError(404, "Product not found");
+  }
+  return {
+    id: product._id.toString(),
+    name: product.name,
+    slug: product.slug,
+    description: product.description,
+    brand: product.brand,
+    categoryId: product.category.toString(),
+    sku: product.sku,
+    priceInMinorUnit: product.priceInMinorUnit,
+    currency: product.currency,
+    stock: product.stock,
+    status: product.status,
+    images: product.images,
+    updatedAt: product.updatedAt,
+  };
+}
+
+export async function removeProduct(productId: string) {
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new ApiError(400, "Invalid Product id");
+  }
+
+  //delete product
+
+  const product = await softDeleteProductById(productId);
+  if (!product) {
+    throw new ApiError(404, "Product not found or already deleted");
+  }
+
+  return {
+    id: product._id.toString(),
+    name: product.name,
+    status: product.status,
+    isDeleted: product.isDeleted,
+  };
+}
+
+export async function restoreProduct(productId: string) {
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new ApiError(400, "Invalid Productid");
+  }
+  const product = await restoreProductById(productId);
+
+  if (!product) {
+    throw new ApiError(404, "deleted product not found");
+  }
+  return {
+    id: product._id.toString(),
+    name: product.name,
+    status: product.status,
+    isDeleted: product.isDeleted,
   };
 }

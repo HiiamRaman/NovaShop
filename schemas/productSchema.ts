@@ -67,3 +67,23 @@ export const updateProductStockSchema = z.object({
     .min(0, "Stock cannot be negative"),
 });
 export type UpdateProductStockInput = z.infer<typeof updateProductStockSchema>;
+
+export const updateProductSchema = z
+  .object({
+    name: z.string().trim().min(2).max(50).optional(),
+    description: z.string().trim().max(500).optional(),
+    brand: z.string().trim().min(1).optional(),
+
+    categoryId: z
+      .string()
+      .regex(/^[0-9a-fA-F]{24}$/, "Invalid category ID")
+      .optional(),
+    sku: z.string().trim().min(1).optional(),
+    priceInMinorUnit: z.number().int().min(0).optional(),
+    currency: z.enum(["NPR", "USD"]).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "Provide at least one field to update",
+  });
+
+export type updateProductInput = z.infer<typeof updateProductSchema>;
