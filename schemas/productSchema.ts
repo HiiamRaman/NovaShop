@@ -33,8 +33,37 @@ export const createProductSchema = z.object({
     .min(0, "Price cannot be negative"),
 
   currency: z.enum(["NPR", "USD"]).default("USD"),
-
-
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
+
+export const productListQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(50).default(10),
+  search: z.string().trim().min(1).optional(),
+  categoryId: z
+    .string()
+    .regex(/^[0-9a-fA-F]{24}$/, "Invalid category ID")
+    .optional(),
+  brand: z.string().trim().min(1).optional(),
+  sort: z
+    .enum(["newest", "price-low-to-high", "price-high-to-low", "name-a-to-z"])
+    .default("newest"),
+});
+
+export type ProductListInput = z.infer<typeof productListQuerySchema>;
+
+export const updateProductStatusSchema = z.object({
+  status: z.enum(["draft", "active", "archived"]),
+});
+export type UpdateProductStatusInput = z.infer<
+  typeof updateProductStatusSchema
+>;
+
+export const updateProductStockSchema = z.object({
+  stock: z
+    .number()
+    .int("stock must be number ")
+    .min(0, "Stock cannot be negative"),
+});
+export type UpdateProductStockInput = z.infer<typeof updateProductStockSchema>;

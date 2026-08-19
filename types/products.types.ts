@@ -2,7 +2,7 @@ export interface Product {
   id: number;
   title: string;
   description: string;
- category:string
+  category: string;
 
   price: number;
   thumbnail: string;
@@ -35,3 +35,21 @@ export interface CreateProductData {
   createdBy: string;
   images?: ProductImageData[];
 }
+
+export interface ProductPaginationOptions {
+  skip: number;
+  limit: number;
+}
+
+export type ProductSortOption =
+  "newest" | "price-low-to-high" | "price-high-to-low" | "name-a-to-z";
+
+export interface PublicProductQueryOptions {
+  skip: number;
+  limit: number;
+  search?: string;
+  categoryId?: string;
+  brand?: string;
+  sort: ProductSortOption;
+}
+

@@ -3,8 +3,8 @@ import { ProductImageData } from "@/types/products.types";
 import { connectDB } from "@/lib/mongodb";
 import { deleteProductImages, uploadProductImages } from "@/lib/uploadImage";
 
-import { createProductSchema } from "@/schemas/productSchema";
-import { addProduct } from "@/services/product.service";
+import { createProductSchema,productListQuerySchema } from "@/schemas/productSchema";
+import { addProduct,getAdminProducts } from "@/services/product.service";
 import { validateProductImages } from "@/utils/validateProductImages";
 import { requireAuth } from "@/utils/requireAuth";
 import { requireAdmin } from "@/utils/requireAdmin";
@@ -58,3 +58,22 @@ export const POST = asyncHandler(async(req: NextRequest): Promise<Response> => {
   }
 
 });
+
+export const GET = asyncHandler(async(req:NextRequest):Promise<Response>=>{
+   // Verify authentication and admin authorization
+   const auth = requireAuth(req)
+   requireAdmin(auth)
+
+   await connectDB()
+   // Convert URLSearchParams into a normal object
+   const queryParams = Object.fromEntries( req.nextUrl.searchParams)
+    // Validate and convert page/limit into numbers
+    const validatedQuery = productListQuerySchema.parse(queryParams)
+    const result = await getAdminProducts(validatedQuery)
+    return NextResponse.json(new ApiResponse(200,'Products fetched successfully',result),{
+      status:200
+    })
+
+
+
+})
