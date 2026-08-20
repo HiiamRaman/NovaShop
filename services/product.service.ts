@@ -24,7 +24,7 @@ import {
 import {
   countProducts,
   findProducts,
-  CountActiveProducts,
+  countActiveProducts,
   findActiveProducts,
   updateProductStatusById,
   findActiveProductBySlug,
@@ -35,6 +35,7 @@ import {
 } from "@/repositories/product.repository";
 import { createSlug } from "@/utils/createSlug";
 import mongoose from "mongoose";
+import { uploadImage, deleteProductImages } from "@/lib/uploadImage";
 
 export async function getProducts(): Promise<Product[]> {
   const res = await fetch("https://dummyjson.com/products", {
@@ -184,7 +185,7 @@ export async function getPublicProducts(input: ProductListInput) {
 
   const [products, totalProducts] = await Promise.all([
     findActiveProducts(queryOptions),
-    CountActiveProducts(queryOptions),
+    countActiveProducts(queryOptions),
   ]);
 
   const totalPages = Math.ceil(totalProducts / limit);
@@ -292,7 +293,7 @@ export async function editProduct(
     const slug = createSlug(input.name);
     const productWithSlug = await findProductBySlug(slug);
 
-    if (productWithSlug && productWithSlug._id.tostring() !== productId) {
+    if (productWithSlug && productWithSlug._id.toString() !== productId) {
       throw new ApiError(409, "Product slug already exists");
     }
     updateData.name = input.name;

@@ -1,5 +1,4 @@
 import { Product } from "@/models/Product.model";
-import { getProductById } from "@/services/product.service";
 
 import type {
   CreateProductData,
@@ -7,6 +6,7 @@ import type {
   PublicProductQueryOptions,
   ProductSortOption,
   UpdateProductData,
+  ProductImageData,
 } from "@/types/products.types";
 
 export async function findProductBySlug(slug: string) {
@@ -80,7 +80,7 @@ export async function findActiveProducts(options: PublicProductQueryOptions) {
     .limit(options.limit);
 }
 
-export async function CountActiveProducts(
+export async function countActiveProducts(
   options: PublicProductQueryOptions
 ): Promise<number> {
   const filter = await buildPublicProductFilter(options);
@@ -187,3 +187,25 @@ export async function restoreProductById(productId: string) {
   );
 }
 
+export async function findProductById(productId: string) {
+  return Product.findOne({ _id: productId, idDeleted: false });
+}
+export async function appendProductImages(
+  productId: string,
+  images: ProductImageData[]
+) {
+  return Product.findOneAndUpdate(
+    { _id: productId, isDeleted: false },
+    {
+      $push: {
+        $images: {
+          $each: images,
+        },
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+}
