@@ -32,10 +32,13 @@ import {
   updateProductById,
   softDeleteProductById,
   restoreProductById,
+  findProductById,
+  appendProductImages
 } from "@/repositories/product.repository";
 import { createSlug } from "@/utils/createSlug";
 import mongoose from "mongoose";
-import { uploadImage, deleteProductImages } from "@/lib/uploadImage";
+import { uploadImage, deleteProductImages, uploadProductImages } from "@/lib/uploadImage";
+import { MAX_IMAGE_COUNT } from "@/utils/validateProductImages";
 
 export async function getProducts(): Promise<Product[]> {
   const res = await fetch("https://dummyjson.com/products", {
@@ -389,4 +392,35 @@ export async function restoreProduct(productId: string) {
     status: product.status,
     isDeleted: product.isDeleted,
   };
+}
+export async function addProductImages (productId:string,files:File[]){
+  //prevent mongoose castError
+  if(!mongoose.Types.ObjectId.isValid(productId)){
+    throw new ApiError(400,'Invalid product ID')
+  }
+  // Find the product receiving the images
+
+  const product = await findProductById(productId);
+  if(!product){
+    throw new ApiError(404,'Product not found')
+  }
+
+    // Count existing and incoming images
+    const totalImages  =  product.images.length + files.length
+
+    if(totalImages >  MAX_IMAGE_COUNT){
+      throw new ApiError(400,`a product can have maximum ${  MAX_IMAGE_COUNT} images`)
+    }
+    //continue images after exixsting image
+
+      const startingPosition =  product.images.length+1;
+      //upload new images in cloudinary
+      const uploadedImages  = await uploadProductImages(files,startingPosition)
+      try {
+        const updatedProduct = 
+
+      } catch (error) {
+
+      }
+
 }
