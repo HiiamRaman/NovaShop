@@ -11,6 +11,7 @@ import {
   createProduct,
   findProductBySku,
   findProductBySlug,
+  removeProductImageByPublicId,
 } from "@/repositories/product.repository";
 
 import { ApiError } from "@/utils/ApiError";
@@ -33,13 +34,17 @@ import {
   softDeleteProductById,
   restoreProductById,
   findProductById,
-  appendProductImages
+  appendProductImages,
 } from "@/repositories/product.repository";
 import { createSlug } from "@/utils/createSlug";
 import mongoose from "mongoose";
-import { uploadImage, deleteProductImages, uploadProductImages } from "@/lib/uploadImage";
+import {
+  uploadImage,
+  deleteProductImages,
+  uploadProductImages,
+} from "@/lib/uploadImage";
 import { MAX_IMAGE_COUNT } from "@/utils/validateProductImages";
-
+import { deleteImage } from "@/lib/uploadImage";
 export async function getProducts(): Promise<Product[]> {
   const res = await fetch("https://dummyjson.com/products", {
     next: { revalidate: 86400 },
@@ -393,34 +398,100 @@ export async function restoreProduct(productId: string) {
     isDeleted: product.isDeleted,
   };
 }
-export async function addProductImages (productId:string,files:File[]){
+export async function addProductImages(productId: string, files: File[]) {
   //prevent mongoose castError
-  if(!mongoose.Types.ObjectId.isValid(productId)){
-    throw new ApiError(400,'Invalid product ID')
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new ApiError(400, "Invalid product ID");
   }
   // Find the product receiving the images
 
   const product = await findProductById(productId);
-  if(!product){
-    throw new ApiError(404,'Product not found')
+  if (!product) {
+    throw new ApiError(404, "Product not found");
   }
 
-    // Count existing and incoming images
-    const totalImages  =  product.images.length + files.length
+  // Count existing and incoming images
+  const totalImages = product.images.length + files.length;
 
-    if(totalImages >  MAX_IMAGE_COUNT){
-      throw new ApiError(400,`a product can have maximum ${  MAX_IMAGE_COUNT} images`)
+  if (totalImages > MAX_IMAGE_COUNT) {
+    throw new ApiError(
+      400,
+      `a product can have maximum ${MAX_IMAGE_COUNT} images`
+    );
+  }
+  //continue images after exixsting image
+
+  const startingPosition = product.images.length + 1;
+  //upload new images in cloudinary
+  const uploadedImages = await uploadProductImages(files, startingPosition);
+  try {
+    // Append uploaded image information to MongoDB
+    const updatedProduct = await appendProductImages(productId, uploadedImages);
+    if (!updatedProduct) {
+      throw new ApiError(404, "product not found");
     }
-    //continue images after exixsting image
 
-      const startingPosition =  product.images.length+1;
-      //upload new images in cloudinary
-      const uploadedImages  = await uploadProductImages(files,startingPosition)
-      try {
-        const updatedProduct = 
+    return {
+      id: updatedProduct._id.toString(),
+      images: updatedProduct.images,
+    };
+  } catch (error) {
+    await deleteProductImages(uploadedImages);
+    throw error;
+  }
+}
 
-      } catch (error) {
+export async function removeProductImage(productId: string, publicId: string) {
+  /*
+Mental model:
+1. Validate the product ID
+2. Find the active product
+3. Confirm the image belongs to the product
+4. Remove the image information from MongoDB
+5. Delete the actual image from Cloudinary
+6. Return the updated product images
+*/
+  // Prevent an invalid MongoDB ObjectId
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new ApiError(400, "Invalid product ID");
+  }
 
-      }
+  // Confirm that the product exists
+  const product = await findProductById(productId);
 
+  if (!product) {
+    throw new ApiError(404, "Product not found");
+  }
+
+  // Confirm that this image belongs to the product
+  const imageExists = product.images.some(
+    (image: ProductImageData) => image.publicId === publicId
+  );
+
+  if (!imageExists) {
+    throw new ApiError(404, "Product image not found");
+  }
+
+  // Remove the image information from MongoDB first
+  const updatedProduct = await removeProductImageByPublicId(
+    productId,
+    publicId
+  );
+
+  if (!updatedProduct) {
+    throw new ApiError(404, "Product image not found");
+  }
+
+  try {
+    // Remove the actual image file from Cloudinary
+    await deleteImage(publicId);
+  } catch (error) {
+    // Prevent a broken product image if Cloudinary cleanup fails
+    console.error("Failed to delete Cloudinary image:", error);
+  }
+
+  return {
+    id: updatedProduct._id.toString(),
+    images: updatedProduct.images,
+  };
 }

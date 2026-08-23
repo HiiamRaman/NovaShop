@@ -87,3 +87,8 @@ export const updateProductSchema = z
   });
 
 export type updateProductInput = z.infer<typeof updateProductSchema>;
+
+export const removeProductImageSchema  = z.object({
+  publicId:z.string().trim().min(1,'Image public ID is required')
+})
+

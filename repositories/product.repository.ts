@@ -188,18 +188,45 @@ export async function restoreProductById(productId: string) {
 }
 
 export async function findProductById(productId: string) {
-  return Product.findOne({ _id: productId, idDeleted: false });
+  return Product.findOne({ _id: productId, isDeleted: false });
 }
 export async function appendProductImages(
   productId: string,
   images: ProductImageData[]
 ) {
   return Product.findOneAndUpdate(
-    { _id: productId, isDeleted: false },
+    {
+      _id: productId,
+      isDeleted: false,
+    },
     {
       $push: {
-        $images: {
+        images: {
           $each: images,
+        },
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+}
+
+export async function removeProductImageByPublicId(
+  productId: string,
+  publicId: string
+) {
+  return Product.findOneAndUpdate(
+    {
+      _id: productId,
+      isDeleted: false,
+      "images.publicId": publicId,
+    },
+    {
+      $pull: {
+        images: {
+          publicId,
         },
       },
     },
