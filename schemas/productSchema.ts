@@ -88,7 +88,17 @@ export const updateProductSchema = z
 
 export type updateProductInput = z.infer<typeof updateProductSchema>;
 
-export const removeProductImageSchema  = z.object({
-  publicId:z.string().trim().min(1,'Image public ID is required')
-})
+export const removeProductImageSchema = z.object({
+  publicId: z.string().trim().min(1, "Image public ID is required"),
+});
 
+export const reorderProductImagesSchema = z.object({
+  publicIds: z
+    .array(z.string().trim().min(1, "Image public ID is required"))
+    .min(1, "At least one image is required")
+    .max(5, "A product can have a maximum of 5 images")
+    .refine(
+      (publicIds) => new Set(publicIds).size === publicIds.length,
+      "Duplicate image public IDs are not allowed"
+    ),
+});

@@ -236,3 +236,13 @@ export async function removeProductImageByPublicId(
     }
   );
 }
+
+export async function updateProductImagesOrder (productId:string,images:ProductImageData[]){
+  return Product.findOneAndUpdate({_id:productId,isDeleted:false},{
+    $set:{images}
+  },{
+    new:true,
+    runValidators:true
+  })
+
+}

@@ -12,6 +12,7 @@ import {
   findProductBySku,
   findProductBySlug,
   removeProductImageByPublicId,
+  updateProductImagesOrder,
 } from "@/repositories/product.repository";
 
 import { ApiError } from "@/utils/ApiError";
@@ -488,6 +489,76 @@ Mental model:
   } catch (error) {
     // Prevent a broken product image if Cloudinary cleanup fails
     console.error("Failed to delete Cloudinary image:", error);
+  }
+
+  return {
+    id: updatedProduct._id.toString(),
+    images: updatedProduct.images,
+  };
+}
+
+/*
+Mental model:
+1. Validate the product ID
+2. Find the non-deleted product
+3. Ensure every existing image ID was provided
+4. Arrange the images in the requested order
+5. Assign positions starting from 1
+6. Save and return the reordered images
+*/
+export async function reorderProductImages(
+  productId: string,
+  publicIds: string[]
+) {
+  // Prevent a Mongoose CastError.
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new ApiError(400, "Invalid product ID");
+  }
+
+  // Get the product with its current images.
+  const product = await findProductById(productId);
+
+  if (!product) {
+    throw new ApiError(404, "Product not found");
+  }
+
+  // The request must include every existing image.
+  if (publicIds.length !== product.images.length) {
+    throw new ApiError(400, "You must provide every existing product image");
+  }
+
+  // Process the requested IDs one by one.
+  const reorderedImages = publicIds.map((publicId, index) => {
+    // Find the complete image belonging to the current ID.
+    const image = product.images.find(
+      (existingImage: ProductImageData) => existingImage.publicId === publicId
+    );
+
+    // Reject an ID that does not belong to this product.
+    if (!image) {
+      throw new ApiError(
+        400,
+        `Image does not belong to this product: ${publicId}`
+      );
+    }
+
+    // Preserve image data and assign its new position.
+    return {
+      url: image.url,
+      publicId: image.publicId,
+      alt: image.alt,
+      position: index + 1,
+    };
+  });
+
+  // Replace the existing images array in MongoDB.
+  const updatedProduct = await updateProductImagesOrder(
+    productId,
+    reorderedImages
+  );
+
+  if (!updatedProduct) {
+    throw new ApiError(404, "Product not found");
   }
 
   return {

@@ -8,12 +8,7 @@ export interface Product {
   thumbnail: string;
   images: string[];
 }
-export interface ProductImageData {
-  url: string;
-  publicId: string;
-  alt: string;
-  position: number;
-}
+
 
 export type ProductCurrency = "NPR" | "USD";
 export interface ProductImageData {
