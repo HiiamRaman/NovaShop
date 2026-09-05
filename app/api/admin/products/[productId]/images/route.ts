@@ -10,8 +10,7 @@ import {
 import { validateProductImages } from "@/utils/validateProductImages";
 import { connectDB } from "@/lib/mongodb";
 import { removeProductImageSchema } from "@/schemas/productSchema";
-import { reorderProductImagesSchema } from "@/schemas/productSchema";
-import { reorderProductImages } from "@/services/product.service";
+
 interface RouteContext {
   params: Promise<{
     productId: string;
