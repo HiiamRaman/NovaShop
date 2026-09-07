@@ -25,3 +25,10 @@ export async function removeCurrentDefaultAddress(userId: string) {
     }
   );
 }
+
+export async function findAddressByIdAndUserId(
+  addressId: string,
+  userId: string
+) {
+  return Address.findOne({ _id: addressId, userId });
+}

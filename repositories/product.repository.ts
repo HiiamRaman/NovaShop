@@ -237,12 +237,26 @@ export async function removeProductImageByPublicId(
   );
 }
 
-export async function updateProductImagesOrder (productId:string,images:ProductImageData[]){
-  return Product.findOneAndUpdate({_id:productId,isDeleted:false},{
-    $set:{images}
-  },{
-    new:true,
-    runValidators:true
-  })
+export async function updateProductImagesOrder(
+  productId: string,
+  images: ProductImageData[]
+) {
+  return Product.findOneAndUpdate(
+    { _id: productId, isDeleted: false },
+    {
+      $set: { images },
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+}
 
+// Fetch all non-deleted products requested during checkout.
+export async function findProductsByIds(productIds: string[]) {
+  return Product.find({
+    _id: { $in: productIds },
+    isDeleted: false,
+  });
 }
