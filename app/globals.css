@@ -38,12 +38,54 @@ body {
 
 
 
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
 
 
 
 
 
 
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-move 20s linear infinite;
+  will-change: transform;
+}
 
+.ticker-group {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
 
+.ticker:hover .ticker-track {
+  animation-play-state: paused;
+}
 
+@keyframes ticker-move {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes ticker-move {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}

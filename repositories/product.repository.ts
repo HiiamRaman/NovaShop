@@ -8,7 +8,7 @@ import type {
   UpdateProductData,
   ProductImageData,
 } from "@/types/products.types";
-
+import type { ClientSession } from "mongoose";
 export async function findProductBySlug(slug: string) {
   return Product.findOne({ slug });
 }
@@ -259,4 +259,40 @@ export async function findProductsByIds(productIds: string[]) {
     _id: { $in: productIds },
     isDeleted: false,
   });
+}
+
+export async function decreaseProductStock(
+  productId: string,
+  quantity: number,
+  session: ClientSession
+) {
+  /*
+Reduce stock only when:
+1. Product exists
+2. Product is active
+3. Product is not deleted
+4. Enough stock is available
+*/
+
+  return Product.findOneAndUpdate(
+    {
+      _id: productId,
+      isDeleted: false,
+      status: "active",
+      stock: {
+        $gte: quantity,
+      },
+    },
+    {
+      // Subtract the ordered quantity.
+      $inc: {
+        stock: -quantity,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+      session,
+    }
+  );
 }

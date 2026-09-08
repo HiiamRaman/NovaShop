@@ -10,6 +10,9 @@ export const env = createEnv({
     CLOUDINARY_CLOUD_NAME: z.string().min(1),
     CLOUDINARY_API_KEY: z.string().min(1),
     CLOUDINARY_API_SECRET: z.string().min(1),
+    STRIPE_SECRET_KEY:z.string().min(1),
+    STRIPE_WEBHOOK_SECRET:z.string().min(1),
+    APP_URL:z.string().min(1)
   },
   runtimeEnv: {
     MONGODB_URI: process.env.MONGODB_URI,
@@ -20,5 +23,8 @@ export const env = createEnv({
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+    STRIPE_SECRET_KEY:process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET:process.env.STRIPE_WEBHOOK_SECRET,
+    APP_URL:process.env.APP_URL
   },
 });

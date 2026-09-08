@@ -25,9 +25,9 @@ export const POST = asyncHandler(
     const orders = await placeOrder(user.sub, addressId, items);
 
     return NextResponse.json(
-      new ApiResponse(200, "Order created successfully", orders),
+      new ApiResponse(201, "Order created successfully", orders),
       {
-        status: 200,
+        status: 201,
       }
     );
   }

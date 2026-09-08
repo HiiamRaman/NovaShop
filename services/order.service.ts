@@ -10,9 +10,8 @@ import type { CreateOrderData } from "@/types/order.types";
 
 import { ApiError } from "@/utils/ApiError";
 import { validateCheckout } from "./checkout.service";
-import { check } from "zod";
-import { create } from "domain";
 
+import { decreaseProductStock } from "@/repositories/product.repository";
 interface OrderItemInput {
   productId: string;
   quantity: number;
@@ -24,39 +23,84 @@ interface OrderItemInput {
 4. Return the created order
 */
 
+
+
+
+
 export async function placeOrder(
   userId: string,
   addressId: string,
   items: OrderItemInput[]
 ) {
-  const checkout = await validateCheckout(userId, addressId, items);
+  // Validate address, products, prices and stock.
+  const checkout = await validateCheckout(
+    userId,
+    addressId,
+    items
+  );
+
   const orderData: CreateOrderData = {
     userId,
     items: checkout.items,
+
     shippingAddress: {
       fullName: checkout.address.fullName,
       phone: checkout.address.phone,
       city: checkout.address.city,
       address: checkout.address.address,
     },
+
     subtotal: checkout.subtotal,
     shipping: checkout.shipping,
     total: checkout.total,
     currency: checkout.currency,
   };
-  const order = await createOrder(orderData);
-  return {
-    id: order._id.toString(),
-    items: order.items,
-    shippingAddress: order.shippingAddress,
-    subtotal: order.subtotal,
-    shipping: order.shipping,
-    total: order.total,
-    currency: order.currency,
-    orderStatus: order.orderStatus,
-    paymentStatus: order.paymentStatus,
-    createdAt: order.createdAt,
-  };
+
+  const session = await mongoose.startSession();
+
+  try {
+    const order = await session.withTransaction(async () => {
+      // Reduce the stock of every ordered product.
+      for (const item of checkout.items) {
+        const updatedProduct = await decreaseProductStock(
+          item.productId,
+          item.quantity,
+          session
+        );
+
+        // null means the product is unavailable or lacks stock.
+        if (!updatedProduct) {
+          throw new ApiError(
+            409,
+            `${item.name} no longer has enough stock`
+          );
+        }
+      }
+
+      // Save the order in the same transaction.
+      return createOrder(orderData, session);
+    });
+
+    if (!order) {
+      throw new ApiError(500, "Order creation failed");
+    }
+
+    return {
+      id: order._id.toString(),
+      items: order.items,
+      shippingAddress: order.shippingAddress,
+      subtotal: order.subtotal,
+      shipping: order.shipping,
+      total: order.total,
+      currency: order.currency,
+      orderStatus: order.orderStatus,
+      paymentStatus: order.paymentStatus,
+      createdAt: order.createdAt,
+    };
+  } finally {
+    // Always close the database session.
+    await session.endSession();
+  }
 }
 
 export async function getMyOrders(userId: string, orderId: string) {

@@ -26,6 +26,9 @@ export interface OrderDocument {
   currency: "NPR" | "USD";
   orderStatus: "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  stripeCheckoutSessionId?: string;
+  paidAt?: Date;
+  expiresAt?: Date;
 }
 
 const orderItemSchema = new mongoose.Schema<OrderItem>(
@@ -141,13 +144,7 @@ const orderSchema = new mongoose.Schema<OrderDocument>(
 
     orderStatus: {
       type: String,
-      enum: [
-        "pending",
-        "confirmed",
-        "shipped",
-        "delivered",
-        "cancelled",
-      ],
+      enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
       default: "pending",
     },
 
@@ -156,6 +153,18 @@ const orderSchema = new mongoose.Schema<OrderDocument>(
       enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
     },
+    stripeCheckoutSessionId: {
+      type: String,
+      index: true,
+    },
+
+    paidAt: {
+      type: Date,
+    },
+
+    expiresAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
@@ -163,5 +172,4 @@ const orderSchema = new mongoose.Schema<OrderDocument>(
 );
 
 export const Order =
-  mongoose.models.Order ||
-  mongoose.model<OrderDocument>("Order", orderSchema);
+  mongoose.models.Order || mongoose.model<OrderDocument>("Order", orderSchema);
