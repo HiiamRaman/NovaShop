@@ -6,7 +6,6 @@ import {
   findPendingOrderForPayment,
   saveStripeCheckoutSessionId,
   markExpiredOrder,
-
 } from "@/repositories/order.repository";
 import { restoreProductStock } from "@/repositories/product.repository";
 import { ApiError } from "@/utils/ApiError";
@@ -24,8 +23,27 @@ export async function createStripeCheckout(userId: string, orderId: string) {
     throw new ApiError(404, "Pending order not found");
   }
 
+  if (order.stripeCheckoutSessionId) {
+    const existingSession = await stripe.checkout.sessions.retrieve(
+      order.stripeCheckoutSessionId
+    );
+
+    // Return the same payment page instead of creating another one.
+    if (existingSession.status === "open" && existingSession.url) {
+      return {
+        checkoutUrl: existingSession.url,
+      };
+    }
+
+    throw new ApiError(
+      409,
+      "This order already has a completed or expired checkout session"
+    );
+  }
+
   // Ask Stripe to create its hosted payment page.
-  const checkoutSession = await stripe.checkout.sessions.create({
+  const checkoutSession = await stripe.checkout.sessions.create(
+  {
     mode: "payment",
 
     line_items: order.items.map((item: CreateOrderItemData) => ({
@@ -39,7 +57,6 @@ export async function createStripeCheckout(userId: string, orderId: string) {
           images: item.image ? [item.image] : [],
         },
 
-        // Your database already stores prices in minor units.
         unit_amount: item.unitPrice,
       },
     })),
@@ -51,7 +68,12 @@ export async function createStripeCheckout(userId: string, orderId: string) {
 
     success_url: `${env.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${env.APP_URL}/checkout`,
-  });
+  },
+  {
+    // Prevent duplicate sessions for the same order.
+    idempotencyKey: `checkout-${order._id.toString()}`,
+  }
+);
 
   if (!checkoutSession.url) {
     throw new ApiError(500, "Stripe checkout URL was not created");
@@ -62,7 +84,6 @@ export async function createStripeCheckout(userId: string, orderId: string) {
 
   return {
     checkoutUrl: checkoutSession.url,
-    checkoutSessionId:checkoutSession.id,
   };
 }
 export async function handleExpiredStripeCheckout(
@@ -92,10 +113,7 @@ export async function handleExpiredStripeCheckout(
         );
 
         if (!product) {
-          throw new ApiError(
-            500,
-            `Failed to restore stock for ${item.name}`
-          );
+          throw new ApiError(500, `Failed to restore stock for ${item.name}`);
         }
       }
 
