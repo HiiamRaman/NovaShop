@@ -49,3 +49,43 @@ export async function saveStripeCheckoutSessionId(
     }
   );
 }
+
+export async function markOrderAsPaid(
+  stripeCheckoutSessionId: string,
+  stripePaymentIntentId?: string
+) {
+  return Order.findOneAndUpdate(
+    { stripeCheckoutSessionId, paymentStatus: "pending" },
+    {
+      $set: {
+        paymentStatus: "paid",
+        stripePaymentIntentId,
+        paidAt: new Date(),
+      },
+    },
+    {
+      returnDocument: "after",
+      runValidators: true,
+    }
+  );
+}
+
+export async function markExpiredOrder(
+  stripeCheckoutSessionId: string,
+  session: ClientSession
+) {
+  return Order.findOneAndUpdate(
+    { stripeCheckoutSessionId, paymentStatus: "pending" },
+    {
+      $set: {
+        paymentStatus: "failed",
+        orderStatus: "cancelled",
+      },
+    },
+    {
+      returnDocument:"after",
+      runValidators:true,
+      session
+    }
+  );
+}

@@ -5,7 +5,10 @@ import { stripe } from "@/lib/stripe";
 import {
   findPendingOrderForPayment,
   saveStripeCheckoutSessionId,
+  markExpiredOrder,
+
 } from "@/repositories/order.repository";
+import { restoreProductStock } from "@/repositories/product.repository";
 import { ApiError } from "@/utils/ApiError";
 
 export async function createStripeCheckout(userId: string, orderId: string) {
@@ -46,7 +49,7 @@ export async function createStripeCheckout(userId: string, orderId: string) {
       userId,
     },
 
-    success_url: `${env.APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    success_url: `${env.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${env.APP_URL}/checkout`,
   });
 
@@ -59,5 +62,46 @@ export async function createStripeCheckout(userId: string, orderId: string) {
 
   return {
     checkoutUrl: checkoutSession.url,
+    checkoutSessionId:checkoutSession.id,
   };
+}
+export async function handleExpiredStripeCheckout(
+  stripeCheckoutSessionId: string
+) {
+  const mongoSession = await mongoose.startSession();
+
+  try {
+    return await mongoSession.withTransaction(async () => {
+      // Only a pending order can be expired.
+      const order = await markExpiredOrder(
+        stripeCheckoutSessionId,
+        mongoSession
+      );
+
+      // The order may already be paid, failed, or previously processed.
+      if (!order) {
+        return null;
+      }
+
+      // Return every reserved item to product stock.
+      for (const item of order.items as CreateOrderItemData[]) {
+        const product = await restoreProductStock(
+          item.productId.toString(),
+          item.quantity,
+          mongoSession
+        );
+
+        if (!product) {
+          throw new ApiError(
+            500,
+            `Failed to restore stock for ${item.name}`
+          );
+        }
+      }
+
+      return order;
+    });
+  } finally {
+    await mongoSession.endSession();
+  }
 }

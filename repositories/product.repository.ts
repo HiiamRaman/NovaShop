@@ -296,3 +296,23 @@ Reduce stock only when:
     }
   );
 }
+
+export async function restoreProductStock(
+  productId: string,
+  quantity: number,
+  session: ClientSession
+) {
+  return Product.findOneAndUpdate(
+    { _id: productId, isDeleted: false },
+    {
+      $inc: {
+        stock: quantity,
+      },
+    },
+    {
+      returnDocument: "after",
+      runValidators: true,
+      session,
+    }
+  );
+}

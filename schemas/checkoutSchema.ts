@@ -49,3 +49,15 @@ export const validateCheckoutSchema = z.object({
     )
     .min(1, "Your cart is empty"),
 });
+
+
+
+export const checkoutSchema = z.object({
+  fullName: z.string().trim().min(3, "Name must be at least 3 characters"),
+  phone: z.string().trim().min(10, "Phone must be at least 10 digits"),
+  address: z.string().trim().min(5, "Address must be at least 5 characters"),
+  city: z.string().trim().min(2, "City is required"),
+  isDefault: z.boolean(),
+});
+
+export type CheckoutFormData = z.infer<typeof checkoutSchema>;
