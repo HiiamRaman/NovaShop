@@ -1,16 +1,5 @@
-export interface Product {
-  id: number;
-  title: string;
-  description: string;
-  category: string;
-
-  price: number;
-  thumbnail: string;
-  images: string[];
-}
-
-
 export type ProductCurrency = "NPR" | "USD";
+
 export interface ProductImageData {
   url: string;
   publicId: string;
@@ -18,6 +7,24 @@ export interface ProductImageData {
   position: number;
 }
 
+// Product returned by the NovaShop API
+export interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  brand: string;
+  categoryId: string;
+  sku: string;
+  priceInMinorUnit: number;
+  currency: ProductCurrency;
+  stock: number;
+  images: ProductImageData[];
+  status: "draft" | "active" | "inactive";
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Data used internally when creating a product
 export interface CreateProductData {
   name: string;
   slug: string;
@@ -31,13 +38,17 @@ export interface CreateProductData {
   images?: ProductImageData[];
 }
 
+// MongoDB pagination input
 export interface ProductPaginationOptions {
   skip: number;
   limit: number;
 }
 
 export type ProductSortOption =
-  "newest" | "price-low-to-high" | "price-high-to-low" | "name-a-to-z";
+  | "newest"
+  | "price-low-to-high"
+  | "price-high-to-low"
+  | "name-a-to-z";
 
 export interface PublicProductQueryOptions {
   skip: number;
@@ -48,8 +59,7 @@ export interface PublicProductQueryOptions {
   sort: ProductSortOption;
 }
 
-
-
+// Data used internally when updating a product
 export interface UpdateProductData {
   name?: string;
   slug?: string;
@@ -59,4 +69,18 @@ export interface UpdateProductData {
   sku?: string;
   priceInMinorUnit?: number;
   currency?: ProductCurrency;
+}
+
+// Pagination returned by the API
+export interface ProductPagination {
+  currentPage: number;
+  limit: number;
+  totalProducts: number;
+  totalPages: number;
+}
+
+// Complete data property returned by GET /api/admin/products
+export interface ProductsResponseData {
+  products: Product[];
+  pagination: ProductPagination;
 }

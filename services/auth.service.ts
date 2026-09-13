@@ -2,6 +2,7 @@ import {
   findUserByEmail,
   createUser,
   findUserById,
+  findAllCustomers
 } from "@/repositories/user.repository";
 import { hashPassword } from "@/lib/bcrypt";
 import type { SignupFormData } from "@/schemas/signupSchema";
@@ -19,7 +20,9 @@ import {
   rotateSessionRefreshToken,
   findActiveSessionsByUserId,
   revokeAllSessionsByUserId,
+
 } from "@/repositories/session.repository";
+import { getCustomerOrderStats,getCustomerOrderStatsById } from "@/repositories/order.repository";
 import { randomUUID } from "node:crypto";
 import {
   generateAccessToken,
@@ -27,7 +30,7 @@ import {
   verifyRefreshToken,
 } from "@/lib/jwt";
 import { env } from "@/lib/env";
-
+import mongoose from "mongoose";
 export async function registerUser(data: SignupFormData) {
   const { fullName, email, password } = data;
   const existingUser = await findUserByEmail(email);
@@ -216,4 +219,55 @@ export async function removeUserSession(
   if (!revokedSession) {
     throw new ApiError(400, "Active session not found");
   }
+}
+
+
+
+export async function getAllCustomersForAdmin() {
+  const [customers, orderStats] = await Promise.all([
+    findAllCustomers(),
+    getCustomerOrderStats(),
+  ]);
+
+  return customers.map((customer) => {
+    const customerStat = orderStats.find(
+      (stat) =>
+        stat._id.toString() === customer._id.toString()
+    );
+
+    return {
+      id: customer._id.toString(),
+      fullName: customer.fullName,
+      email: customer.email,
+      orders: customerStat?.orders ?? 0,
+      totalSpent: customerStat?.totalSpent ?? 0,
+      joinedAt: customer.createdAt,
+    };
+  });
+}
+
+export async function getCustomerByIdForAdmin(
+  customerId: string
+) {
+  if (!mongoose.Types.ObjectId.isValid(customerId)) {
+    throw new ApiError(400, "Invalid customer ID");
+  }
+
+  const customer = await findUserById(customerId);
+
+  if (!customer) {
+    throw new ApiError(404, "Customer not found");
+  }
+
+  const orderStats =
+    await getCustomerOrderStatsById(customerId);
+
+  return {
+    id: customer._id.toString(),
+    fullName: customer.fullName,
+    email: customer.email,
+    orders: orderStats?.orders ?? 0,
+    totalSpent: orderStats?.totalSpent ?? 0,
+    joinedAt: customer.createdAt,
+  };
 }

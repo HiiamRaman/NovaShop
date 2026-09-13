@@ -4,9 +4,11 @@ import {
   createOrder,
   findOrderByIdAndUserId,
   findOrdersByUserId,
+  findAllOrders,
+  findOrderByIdForAdmin
 } from "@/repositories/order.repository";
 
-import type { CreateOrderData } from "@/types/order.types";
+import type { CreateOrderData,CreateOrderItemData } from "@/types/order.types";
 
 import { ApiError } from "@/utils/ApiError";
 import { validateCheckout } from "./checkout.service";
@@ -137,6 +139,60 @@ export async function  getMyOrderById (userId:string,orderId:string) {
     throw new ApiError(404,'Order not  found')
   }
    return {
+    id: order._id.toString(),
+    items: order.items,
+    shippingAddress: order.shippingAddress,
+    subtotal: order.subtotal,
+    shipping: order.shipping,
+    total: order.total,
+    currency: order.currency,
+    orderStatus: order.orderStatus,
+    paymentStatus: order.paymentStatus,
+    createdAt: order.createdAt,
+  };
+}
+
+export async function getAllOrdersForAdmin() {
+  const orders = await findAllOrders();
+
+  return orders.map((order) => {
+    const itemCount = (
+      order.items as CreateOrderItemData[]
+    ).reduce((total, item) => {
+      return total + item.quantity;
+    }, 0);
+
+    return {
+      id: order._id.toString(),
+      customer: order.shippingAddress.fullName,
+      itemCount,
+      total: order.total,
+      currency: order.currency,
+      orderStatus: order.orderStatus,
+      paymentStatus: order.paymentStatus,
+      createdAt: order.createdAt,
+    };
+  });
+}
+
+
+
+
+
+
+
+export async function getOrderByIdForAdmin(orderId: string) {
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    throw new ApiError(400, "Invalid order ID");
+  }
+
+  const order = await findOrderByIdForAdmin(orderId);
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  return {
     id: order._id.toString(),
     items: order.items,
     shippingAddress: order.shippingAddress,

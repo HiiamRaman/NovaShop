@@ -15,3 +15,12 @@ export async function findUserByEmailWithPassword(email: string) {
   return User.findOne({ email }).select("+password");
 }
 
+export async function findAllCustomers() {
+  return User.find({
+    role: "user",
+  })
+    .select("fullName email createdAt")
+    .sort({
+      createdAt: -1,
+    });
+}

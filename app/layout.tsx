@@ -1,24 +1,8 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- import type { Metadata } from "next"; // 1. Import the Metadata type
- import "./globals.css";
- import Navbar from "@/components/layout/Navbar";
+import type { Metadata } from "next"; // 1. Import the Metadata type
+import "./globals.css";
 import { Fraunces, Inter } from "next/font/google";
-import FloatingLiveChat from "@/components/chat/FloatingLiveChat";
-
+import { Toaster } from "sonner";
+import AppShell from "@/components/layout/AppShell";
 // 2. Define and export your metadata object
 export const metadata: Metadata = {
   title: "NovaShop | Premium Shopping Experience",
@@ -46,9 +30,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body>
-        <Navbar />
-        {children}
-        <FloatingLiveChat />
+        <AppShell>{children}</AppShell>
+        <Toaster position="top-right" richColors closeButton duration={3000} />
       </body>
     </html>
   );
