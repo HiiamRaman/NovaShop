@@ -1,105 +1,181 @@
 "use client";
 
 import Image from "next/image";
-import { CartItem as CartItemType } from "@/types/cart.types";
+import {
+  ImageIcon,
+  Minus,
+  Plus,
+  Trash2,
+} from "lucide-react";
+
+import type { CartItem as CartItemType } from "@/types/cart.types";
 import { useCartStore } from "@/store/cartStore";
 
-interface CartItemProps {
+type CartItemProps = {
   item: CartItemType;
-}
+};
 
-export default function CartItem({ item }: CartItemProps) {
-  const increaseQuantity = useCartStore((state) => state.increaseQuantity);
-  const decreaseQuantity = useCartStore((state) => state.decreaseQuantity);
-  const removeFromCart = useCartStore((state) => state.removeFromCart);
+export default function CartItem({
+  item,
+}: CartItemProps) {
+  const increaseQuantity = useCartStore(
+    (state) => state.increaseQuantity
+  );
 
-  const itemTotalLinePrice = item.price * item.quantity;
+  const decreaseQuantity = useCartStore(
+    (state) => state.decreaseQuantity
+  );
+
+  const removeFromCart = useCartStore(
+    (state) => state.removeFromCart
+  );
+
+  // Keep only images that contain a valid URL.
+  const validImages =
+    item.images
+      ?.filter((image) => {
+        return (
+          typeof image.url === "string" &&
+          image.url.trim() !== ""
+        );
+      })
+      .slice()
+      .sort((firstImage, secondImage) => {
+        return firstImage.position - secondImage.position;
+      }) ?? [];
+
+  const firstImage = validImages[0];
+  const imageUrl = firstImage?.url;
+
+  const imageAlt =
+    firstImage?.alt?.trim() ||
+    item.name?.trim() ||
+    "Cart product";
+
+  // UPDATED:
+  // Protect the UI from old or corrupted localStorage values.
+  const quantity = Number.isFinite(item.quantity)
+    ? item.quantity
+    : 1;
+
+  const priceInMinorUnit = Number.isFinite(
+    item.priceInMinorUnit
+  )
+    ? item.priceInMinorUnit
+    : 0;
+
+  const stock = Number.isFinite(item.stock)
+    ? item.stock
+    : 0;
+
+  // Convert minor units only when displaying prices.
+  const unitPrice = priceInMinorUnit / 100;
+
+  const lineTotal =
+    (priceInMinorUnit * quantity) / 100;
+
+  const isMaximumQuantity =
+    quantity >= stock;
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 hover:border-black hover:shadow-sm hover:shadow-emerald-50/40 transition-all duration-300 group">
-      {/* Left Container: Image & Details */}
-      <div className="flex items-center gap-4 sm:gap-5">
-        <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-gray-50 border border-gray-100 rounded-xl overflow-hidden">
-          <Image
-            src={item.thumbnail}
-            alt={item.title}
-            fill
-            sizes="96px"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+    <article className="group flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition duration-300 hover:border-emerald-200 hover:shadow-md sm:flex-row sm:items-center sm:p-5">
+      {/* Product image and information */}
+      <div className="flex min-w-0 items-center gap-4 sm:gap-5">
+        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 sm:h-24 sm:w-24">
+          {/* Never render Next Image without a valid URL. */}
+          {imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt={imageAlt}
+              fill
+              sizes="96px"
+              className="object-cover transition duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <ImageIcon className="h-7 w-7 text-slate-300" />
+            </div>
+          )}
         </div>
 
-        <div className="space-y-1">
-          <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight line-clamp-1">
-            {item.title}
+        <div className="min-w-0">
+          <h2 className="truncate text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+            {item.name || "Unnamed product"}
           </h2>
-          {/* Subtle Color Accent 1: Emerald Single Price */}
-          <p className="text-sm font-semibold text-emerald-600">
-            ${item.price}{" "}
-            <span className="text-xs font-normal text-gray-400">each</span>
+
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+            {item.brand || "NovaShop"}
           </p>
 
-          {/* Mobile subtotal text */}
-          <p className="text-xs font-medium text-gray-400 sm:hidden pt-1">
+          <p className="mt-2 text-sm font-semibold text-slate-700">
+            {item.currency || "NPR"}{" "}
+            {unitPrice.toLocaleString()}
+
+            <span className="ml-1 text-xs font-normal text-slate-400">
+              each
+            </span>
+          </p>
+
+          {/* Mobile subtotal */}
+          <p className="mt-2 text-xs font-medium text-slate-400 sm:hidden">
             Total:{" "}
             <span className="text-sm font-bold text-emerald-600">
-              ${itemTotalLinePrice}
+              {item.currency || "NPR"}{" "}
+              {lineTotal.toLocaleString()}
             </span>
           </p>
         </div>
       </div>
 
-      {/* Right Container: Actions & Total */}
-      <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-50">
-        {/* Modern Gray Quantity Counter with subtle hover text shift */}
-        <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
+      {/* Quantity and remove actions */}
+      <div className="flex items-center justify-between gap-4 border-t border-slate-100 pt-4 sm:justify-end sm:border-t-0 sm:pt-0">
+        <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
           <button
+            type="button"
             onClick={() => decreaseQuantity(item.id)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg font-bold text-gray-400 hover:text-gray-900 hover:bg-white transition cursor-pointer select-none"
+            aria-label={`Decrease quantity of ${item.name}`}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white hover:text-slate-900"
           >
-            —
+            <Minus className="h-4 w-4" />
           </button>
 
-          <span className="font-semibold text-sm text-gray-800 w-8 text-center select-none">
-            {item.quantity}
+          {/* UPDATED: Render the validated quantity. */}
+          <span className="w-8 select-none text-center text-sm font-semibold text-slate-800">
+            {quantity}
           </span>
 
           <button
+            type="button"
             onClick={() => increaseQuantity(item.id)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg font-bold text-gray-400 hover:text-emerald-600 hover:bg-white transition cursor-pointer select-none"
+            disabled={isMaximumQuantity}
+            aria-label={`Increase quantity of ${item.name}`}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            +
+            <Plus className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Subtle Color Accent 2: Elegant Desktop Subtotal Line */}
-        <div className="hidden sm:block text-right min-w-[70px]">
-          <p className="text-sm font-extrabold text-emerald-600">
-            ${itemTotalLinePrice}
+        {/* Desktop subtotal */}
+        <div className="hidden min-w-32 text-right sm:block">
+          <p className="text-xs text-slate-400">
+            Subtotal
+          </p>
+
+          <p className="mt-1 font-extrabold text-emerald-600">
+            {item.currency || "NPR"}{" "}
+            {lineTotal.toLocaleString()}
           </p>
         </div>
 
-        {/* Trash button: turns soft red on hover */}
         <button
+          type="button"
           onClick={() => removeFromCart(item.id)}
-          className="flex items-center justify-center p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all duration-200 cursor-pointer"
-          aria-label="Remove item from cart"
+          aria-label={`Remove ${item.name} from cart`}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-red-50 hover:text-red-500"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
+          <Trash2 className="h-5 w-5" />
         </button>
       </div>
-    </div>
+    </article>
   );
 }

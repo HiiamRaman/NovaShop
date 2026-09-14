@@ -1,84 +1,83 @@
 "use client";
 
-import { Product } from "@/types/products.types";
-import AddToCartButton from "./AddToCartButton";
-import { useState } from "react";
-import QuantitySelector from "./QuantitySelector";
+import { PackageCheck, PackageX, ShoppingCart } from "lucide-react";
+import { toast } from "sonner";
 
-function ProductInfo({ product }: { product: Product }) {
-  const [quantity, setQuantity] = useState(1);
+import type { Product } from "@/types/products.types";
+import { useCartStore } from "@/store/cartStore";
+
+interface ProductInfoProps {
+  product: Product;
+}
+
+export default function ProductInfo({
+  product,
+}: ProductInfoProps) {
+  const addToCart = useCartStore((state) => state.addToCart);
+
+  const isOutOfStock = product.stock <= 0;
+
+  // UPDATED: API stores money in minor units.
+  const formattedPrice = (
+    product.priceInMinorUnit / 100
+  ).toLocaleString();
+
+  function handleAddToCart() {
+    if (isOutOfStock) {
+      toast.error("This product is out of stock");
+      return;
+    }
+
+    addToCart(product, 1);
+
+    toast.success("Added to cart", {
+      description: product.name,
+    });
+  }
 
   return (
-    <div className="sticky top-24 flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-md">
-      {/* Category */}
-      <span className="inline-flex w-fit rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
-        Premium
-      </span>
-
-      {/* Title */}
-      <h1 className="mt-2 text-2xl font-bold leading-snug text-slate-900">
-        {product.title}
+    <section>
+      {/* UPDATED: API uses name instead of title. */}
+      <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+        {product.name}
       </h1>
 
-      {/* Rating */}
-      <div className="mt-2 flex items-center gap-2">
-        <div className="rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
-          ⭐ {product.rating.toFixed(1)}
-        </div>
-        <span className="text-xs text-slate-500">Verified</span>
-      </div>
+      <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-emerald-600">
+        {product.brand}
+      </p>
 
-      {/* Price */}
-      <div className="mt-3 border-y border-slate-200 py-2">
-        <p className="text-[10px] uppercase tracking-wide text-slate-500">
-          Price
-        </p>
-        <p className="mt-1 text-2xl font-black text-slate-900">
-          ${product.price}
-        </p>
-      </div>
+      {/* UPDATED: API uses priceInMinorUnit and currency. */}
+      <p className="mt-6 text-3xl font-bold text-slate-900">
+        {product.currency} {formattedPrice}
+      </p>
 
-      {/* Description */}
-      <div className="mt-3">
-        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-900">
-          Description
-        </h3>
-        <p className="mt-1 text-sm leading-snug text-slate-600">
-          {product.description}
-        </p>
-      </div>
-
-      {/* Stock */}
-      <div className="mt-3">
-        {product.stock > 0 ? (
-          <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            ✓ In Stock ({product.stock})
+      <div className="mt-5">
+        {isOutOfStock ? (
+          <span className="inline-flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-700">
+            <PackageX className="h-4 w-4" />
+            Out of stock
           </span>
         ) : (
-          <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
-            ✕ Out of Stock
+          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
+            <PackageCheck className="h-4 w-4" />
+            {product.stock} available
           </span>
         )}
       </div>
 
-      {/* Quantity */}
-      <div className="mt-3">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-700">
-          Quantity
-        </p>
-        <QuantitySelector quantity={quantity} setQuantity={setQuantity} />
-      </div>
+      <p className="mt-7 leading-7 text-slate-600">
+        {product.description}
+      </p>
 
-      {/* Add To Cart */}
-      <div className="mt-4 border-t border-slate-200 pt-3">
-        <AddToCartButton
-          product={product}
-          quantity={quantity}
-          onAdded={() => setQuantity(1)}
-        />
-      </div>
-    </div>
+      <button
+        type="button"
+        disabled={isOutOfStock}
+        onClick={handleAddToCart}
+        className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-4 font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+      >
+        <ShoppingCart className="h-5 w-5" />
+        {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+      </button>
+    </section>
   );
 }
-
-export default ProductInfo;

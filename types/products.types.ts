@@ -14,6 +14,7 @@ export interface Product {
   slug: string;
   brand: string;
   categoryId: string;
+  description: string;
   sku: string;
   priceInMinorUnit: number;
   currency: ProductCurrency;

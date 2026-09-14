@@ -3,10 +3,13 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     qualities: [75, 85],
+
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "cdn.dummyjson.com",
+        hostname: "res.cloudinary.com",
+        port: "",
+        pathname: "/dqatzf23w/image/upload/**",
       },
     ],
   },

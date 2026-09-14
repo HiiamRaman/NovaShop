@@ -1,44 +1,52 @@
 "use client";
 
 import Link from "next/link";
+
 import CheckoutForm from "./CheckoutForm";
 import OrderSummary from "./OrderSummary";
 import { useCartStore } from "@/store/cartStore";
 
-function CheckoutContent() {
+export default function CheckoutContent() {
   const cart = useCartStore((state) => state.cart);
 
   if (cart.length === 0) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="max-w-md rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-xl">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-4xl">
-            🛒
-          </div>
+      <section className="flex min-h-[70vh] items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-lg">
+          <div className="text-6xl">🛒</div>
 
-          <h2 className="mt-6 text-3xl font-black text-slate-900">
-            Your Cart is Empty
-          </h2>
+          <h1 className="mt-5 text-2xl font-bold text-slate-900">
+            Your cart is empty
+          </h1>
 
-          <p className="mt-4 text-slate-500">
-            Add products before continuing to checkout.
+          <p className="mt-2 text-sm text-slate-500">
+            Add some products before continuing to checkout.
           </p>
 
           <Link
             href="/products"
-            className="mt-8 inline-flex rounded-full bg-emerald-600 px-10 py-3 font-semibold text-white hover:bg-emerald-700"
+            className="mt-6 inline-flex rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700"
           >
-            Continue Shopping
+            Browse Products
           </Link>
         </div>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
-      <div className="grid gap-10 lg:grid-cols-5 items-start">
+    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-slate-900">
+          Checkout
+        </h1>
 
+        <p className="mt-2 text-sm text-slate-500">
+          Select a shipping address and complete your payment.
+        </p>
+      </div>
+
+      <div className="grid items-start gap-8 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <CheckoutForm />
         </div>
@@ -46,10 +54,7 @@ function CheckoutContent() {
         <div className="lg:col-span-2">
           <OrderSummary />
         </div>
-
       </div>
     </div>
   );
 }
-
-export default CheckoutContent;

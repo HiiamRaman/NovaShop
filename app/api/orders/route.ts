@@ -38,7 +38,7 @@ export const GET = asyncHandler(
     const user = requireAuth(req);
     await connectDB();
 
-    const orders = await getMyOrders(user.sub, orderId);
+    const orders = await getMyOrders(user.sub);
 
     return NextResponse.json(
       new ApiResponse(200, "Orders fetched successfully", orders),

@@ -1,209 +1,247 @@
+"use client";
+
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import {
+  AlertCircle,
   ArrowRight,
-  Check,
   CheckCircle2,
   Clock3,
-  PackageCheck,
+  LoaderCircle,
   ShoppingBag,
-  Truck,
 } from "lucide-react";
+import { Suspense, useEffect, useState } from "react";
 
-export default function CheckoutSuccessPage() {
+import { api } from "@/lib/apiClient";
+import { useCartStore } from "@/store/cartStore";
+
+type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+
+interface Order {
+  id: string;
+  total: number;
+  currency: "NPR" | "USD";
+  orderStatus: string;
+  paymentStatus: PaymentStatus;
+}
+
+function SuccessContent() {
+  const searchParams = useSearchParams();
+
+  const orderId = searchParams.get("order_id");
+  const sessionId = searchParams.get("session_id");
+
+  const clearCart = useCartStore((state) => state.clearCart);
+
+  const [order, setOrder] = useState<Order | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!orderId || !sessionId) {
+      setError("Payment information is missing.");
+      setIsLoading(false);
+      return;
+    }
+
+    let attempts = 0;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    async function checkOrder() {
+      try {
+        const response = await api.get(`/api/orders/${orderId}`);
+
+        const currentOrder = response.data as Order;
+
+        setOrder(currentOrder);
+        setIsLoading(false);
+
+        if (currentOrder.paymentStatus === "paid") {
+          // Clear the cart only after payment is verified.
+          clearCart();
+          return;
+        }
+
+        if (
+          currentOrder.paymentStatus === "failed" ||
+          currentOrder.paymentStatus === "refunded"
+        ) {
+          return;
+        }
+
+        attempts += 1;
+
+        // Give the Stripe webhook time to update MongoDB.
+        if (attempts < 10) {
+          timeoutId = setTimeout(checkOrder, 2000);
+        } else {
+          setError("Payment confirmation is taking longer than expected.");
+        }
+      } catch (requestError) {
+        setIsLoading(false);
+
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to verify payment."
+        );
+      }
+    }
+
+    checkOrder();
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [orderId, sessionId, clearCart]);
+
+  if (isLoading) {
+    return (
+      <StatusMessage
+        icon={
+          <LoaderCircle className="h-12 w-12 animate-spin text-emerald-600" />
+        }
+        title="Confirming your payment"
+        description="Please wait while we verify your payment with Stripe."
+      />
+    );
+  }
+
+  if (error || !order || order.paymentStatus !== "paid") {
+    return (
+      <StatusMessage
+        icon={
+          order?.paymentStatus === "pending" && !error ? (
+            <Clock3 className="h-12 w-12 text-amber-500" />
+          ) : (
+            <AlertCircle className="h-12 w-12 text-red-500" />
+          )
+        }
+        title={
+          order?.paymentStatus === "pending"
+            ? "Payment is processing"
+            : "Payment could not be confirmed"
+        }
+        description={error || "Stripe has not confirmed this payment yet."}
+      />
+    );
+  }
+
+  const total = order.total / 100;
+
   return (
-    <main className="relative isolate flex min-h-[calc(100vh-80px)] items-center overflow-hidden bg-[#f6f8f7] px-5 py-6">
-      {/* Background decorations */}
-      <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.14),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(13,148,136,0.12),_transparent_38%)]" />
+    <main className="relative flex min-h-[calc(100vh-80px)] items-center bg-gradient-to-br from-emerald-50 via-white to-teal-50 px-5 py-10">
+      <section className="mx-auto w-full max-w-2xl overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-2xl">
+        <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-emerald-600 to-teal-500" />
 
-      <div className="absolute left-[8%] top-16 -z-10 h-24 w-24 rounded-full border border-emerald-200/60" />
+        <header className="px-7 py-9 text-center sm:px-10">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100">
+            <CheckCircle2 className="h-11 w-11 text-emerald-600" />
+          </div>
 
-      <div className="absolute bottom-16 right-[10%] -z-10 h-16 w-16 rotate-12 rounded-3xl bg-teal-100/70" />
+          <p className="mt-5 text-xs font-bold uppercase tracking-[0.3em] text-emerald-600">
+            Payment verified
+          </p>
 
-      <section className="mx-auto w-full max-w-2xl">
-        {/* Payment label */}
-        <div className="mb-3 flex justify-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm backdrop-blur">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            </span>
+          <h1 className="mt-3 text-3xl font-black text-slate-900">
+            Your order is confirmed
+          </h1>
 
-            Payment completed
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-500">
+            Thank you for shopping with NovaShop. Your payment was received and
+            your order is being prepared.
+          </p>
+        </header>
+
+        <div className="mx-6 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 sm:mx-8">
+          <div className="flex justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase text-emerald-700">
+                Order
+              </p>
+
+              <p className="mt-1 font-bold text-slate-900">
+                #{order.id.slice(-8)}
+              </p>
+            </div>
+
+            <div className="text-right">
+              <p className="text-xs font-semibold uppercase text-emerald-700">
+                Total paid
+              </p>
+
+              <p className="mt-1 font-bold text-slate-900">
+                {order.currency} {total.toLocaleString()}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/90 shadow-[0_25px_70px_-30px_rgba(15,23,42,0.3)] backdrop-blur-xl">
-          {/* Success header */}
-          <header className="relative overflow-hidden px-7 pb-6 pt-7 text-center sm:px-10">
-            <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-400 via-emerald-600 to-teal-500" />
+        <div className="grid gap-3 p-6 sm:grid-cols-2 sm:p-8">
+          <Link
+            href="/orders"
+            className="group flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            View My Orders
+            <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+          </Link>
 
-            <div className="relative mx-auto flex h-16 w-16 items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-emerald-100" />
-
-              <div className="absolute inset-1.5 rounded-full border border-emerald-200 bg-white shadow-md shadow-emerald-100" />
-
-              <CheckCircle2
-                className="relative h-9 w-9 text-emerald-600"
-                strokeWidth={2.2}
-              />
-            </div>
-
-            <p className="mt-4 text-xs font-bold uppercase tracking-[0.3em] text-emerald-600">
-              Order confirmed
-            </p>
-
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900">
-              Your order is on its way.
-            </h1>
-
-            <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">
-              Thank you for shopping with NovaShop. We received your payment
-              and are preparing your items for delivery.
-            </p>
-          </header>
-
-          {/* Confirmation */}
-          <div className="mx-6 rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 sm:mx-8">
-            <div className="flex items-center gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-200">
-                <PackageCheck className="h-6 w-6" />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <h2 className="font-bold text-slate-900">
-                  We received your order
-                </h2>
-
-                <p className="mt-0.5 text-sm text-slate-600">
-                  Track its progress from your order history.
-                </p>
-              </div>
-
-              <div className="hidden items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-sm sm:flex">
-                <Check className="h-3.5 w-3.5" />
-                Confirmed
-              </div>
-            </div>
-          </div>
-
-          {/* Order progress */}
-          <div className="px-6 py-6 sm:px-8">
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                  Order journey
-                </p>
-
-                <h2 className="mt-1 text-lg font-bold text-slate-900">
-                  What happens next?
-                </h2>
-              </div>
-
-              <p className="hidden text-xs text-slate-400 sm:block">
-                Step 1 of 3 completed
-              </p>
-            </div>
-
-            <div className="relative mt-5 grid gap-3 sm:grid-cols-3 sm:gap-5">
-              <div className="absolute left-[16%] right-[16%] top-5 hidden h-px bg-slate-200 sm:block" />
-
-              <ProgressStep
-                icon={<Check className="h-4 w-4" />}
-                title="Payment"
-                description="Payment received"
-                active
-              />
-
-              <ProgressStep
-                icon={<Clock3 className="h-4 w-4" />}
-                title="Processing"
-                description="Preparing items"
-              />
-
-              <ProgressStep
-                icon={<Truck className="h-4 w-4" />}
-                title="Delivery"
-                description="Coming next"
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <Link
-                href="/orders"
-                className="group flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white shadow-md shadow-slate-300 transition hover:-translate-y-0.5 hover:bg-emerald-700"
-              >
-                <ShoppingBag className="h-4 w-4" />
-                View My Orders
-
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-
-              <Link
-                href="/products"
-                className="flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3 font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
-              >
-                Continue Shopping
-              </Link>
-            </div>
-
-            <div className="mt-5 border-t border-slate-100 pt-4 text-center">
-              <p className="text-xs text-slate-400">
-                Need assistance?{" "}
-                <Link
-                  href="/contact"
-                  className="font-semibold text-emerald-700 hover:underline"
-                >
-                  Contact NovaShop Support
-                </Link>
-              </p>
-            </div>
-          </div>
+          <Link
+            href="/products"
+            className="flex items-center justify-center rounded-xl border border-slate-200 px-6 py-3 font-semibold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+          >
+            Continue Shopping
+          </Link>
         </div>
       </section>
     </main>
   );
 }
 
-interface ProgressStepProps {
-  icon: ReactNode;
+interface StatusMessageProps {
+  icon: React.ReactNode;
   title: string;
   description: string;
-  active?: boolean;
 }
 
-function ProgressStep({
-  icon,
-  title,
-  description,
-  active = false,
-}: ProgressStepProps) {
+function StatusMessage({ icon, title, description }: StatusMessageProps) {
   return (
-    <div className="relative flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:flex-col sm:border-0 sm:bg-transparent sm:p-0 sm:text-center">
-      <div
-        className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-4 border-white shadow-md ${
-          active
-            ? "bg-emerald-600 text-white shadow-emerald-200"
-            : "bg-slate-100 text-slate-400 shadow-slate-200"
-        }`}
-      >
-        {icon}
-      </div>
+    <main className="flex min-h-[calc(100vh-80px)] items-center justify-center bg-slate-50 px-5">
+      <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-xl">
+        <div className="flex justify-center">{icon}</div>
 
-      <div>
-        <p
-          className={`text-sm font-bold ${
-            active ? "text-emerald-700" : "text-slate-700"
-          }`}
+        <h1 className="mt-5 text-2xl font-bold text-slate-900">{title}</h1>
+
+        <p className="mt-3 text-sm leading-6 text-slate-500">{description}</p>
+
+        <Link
+          href="/orders"
+          className="mt-7 inline-flex rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white"
         >
-          {title}
-        </p>
+          View My Orders
+        </Link>
+      </section>
+    </main>
+  );
+}
 
-        <p className="mt-0.5 text-xs text-slate-400">
-          {description}
-        </p>
-      </div>
-    </div>
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <StatusMessage
+          icon={
+            <LoaderCircle className="h-12 w-12 animate-spin text-emerald-600" />
+          }
+          title="Loading payment"
+          description="Please wait a moment."
+        />
+      }
+    >
+      <SuccessContent />
+    </Suspense>
   );
 }

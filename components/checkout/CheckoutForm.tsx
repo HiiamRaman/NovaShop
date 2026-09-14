@@ -1,125 +1,184 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { CreditCard } from "lucide-react";
+import { toast } from "sonner";
 
-import {
-  checkoutSchema,
-  type CheckoutFormData,
-} from "@/schemas/checkoutSchema";
+import { api } from "@/lib/apiClient";
+import { useCartStore } from "@/store/cartStore";
+
+import SavedAddressSelector from "./SavedAddressSelector";
+
+import type { CheckoutAddress } from "./SavedAddressSelector";
+
+interface OrderResponse {
+  id: string;
+}
+
+interface StripeResponse {
+  checkoutUrl: string;
+}
 
 export default function CheckoutForm() {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<CheckoutFormData>({
-    resolver: zodResolver(checkoutSchema),
-    defaultValues: {
-      fullName: "",
-      phone: "",
-      address: "",
-      city: "",
-      isDefault: false,
-    },
-  });
+  const cart = useCartStore((state) => state.cart);
 
-  function onSubmit(data: CheckoutFormData) {
-    console.log(data);
+  const [addresses, setAddresses] = useState<CheckoutAddress[]>([]);
+
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    async function loadAddresses() {
+      try {
+        const response = await api.get("/api/addresses");
+
+        const savedAddresses = response.data as CheckoutAddress[];
+
+        setAddresses(savedAddresses);
+
+        if (savedAddresses.length === 0) {
+          setSelectedAddressId("");
+          return;
+        }
+
+        // Check whether we returned from the new-address page.
+        const searchParams = new URLSearchParams(window.location.search);
+
+        const requestedAddressId = searchParams.get("addressId");
+
+        // Find the address created on the new-address page.
+        const requestedAddress = savedAddresses.find(
+          (address) => address.id === requestedAddressId
+        );
+
+        // Selection priority:
+        // 1. Newly created address
+        // 2. Default address
+        // 3. First saved address
+        const selectedAddress =
+          requestedAddress ??
+          savedAddresses.find((address) => address.isDefault) ??
+          savedAddresses[0];
+
+        setSelectedAddressId(selectedAddress.id);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unable to load addresses";
+
+        toast.error("Could not load saved addresses", {
+          description: message,
+        });
+      } finally {
+        setIsLoadingAddresses(false);
+      }
+    }
+
+    loadAddresses();
+  }, []);
+
+  function handleAddressSelect(addressId: string) {
+    setSelectedAddressId(addressId);
   }
 
-  const inputClass =
-    "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100";
+  async function handleCheckout() {
+    if (isSubmitting) {
+      return;
+    }
+
+    if (cart.length === 0) {
+      toast.error("Your cart is empty");
+      return;
+    }
+
+    if (!selectedAddressId) {
+      toast.error("Please add or select a shipping address");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      // Send only product IDs and quantities.
+      // The backend verifies prices and stock.
+      const checkoutData = {
+        addressId: selectedAddressId,
+
+        items: cart.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+        })),
+      };
+
+      // Step 1: Verify address ownership, products,
+      // prices and available stock.
+      await api.post("/api/checkout/validate", checkoutData);
+
+      // Step 2: Create a pending NovaShop order.
+      const orderResponse = await api.post("/api/orders", checkoutData);
+
+      const order = orderResponse.data as OrderResponse;
+
+      if (!order.id) {
+        throw new Error("Order ID was not returned");
+      }
+
+      // Step 3: Create the Stripe Checkout Session.
+      const stripeResponse = await api.post("/api/payment/stripe/checkout", {
+        orderId: order.id,
+      });
+
+      const stripeCheckout = stripeResponse.data as StripeResponse;
+
+      if (!stripeCheckout.checkoutUrl) {
+        throw new Error("Stripe checkout URL was not returned");
+      }
+
+      // Step 4: Leave NovaShop and open Stripe.
+      window.location.assign(stripeCheckout.checkoutUrl);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Checkout failed";
+
+      toast.error("Unable to checkout", {
+        description: message,
+      });
+
+      setIsSubmitting(false);
+    }
+  }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg"
-    >
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900">Shipping Info</h2>
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <SavedAddressSelector
+        addresses={addresses}
+        selectedAddressId={selectedAddressId}
+        isLoading={isLoadingAddresses}
+        onSelect={handleAddressSelect}
+      />
 
-        <p className="mt-1 text-sm text-slate-500">
-          Enter your delivery details
+      <button
+        type="button"
+        onClick={handleCheckout}
+        disabled={isSubmitting || isLoadingAddresses || addresses.length === 0}
+        className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <CreditCard className="h-5 w-5" />
+
+        {isSubmitting ? "Preparing payment..." : "Continue to payment"}
+      </button>
+
+      {addresses.length === 0 && !isLoadingAddresses && (
+        <p className="mt-3 text-center text-sm text-amber-600">
+          Add a shipping address before continuing.
         </p>
-      </div>
+      )}
 
-      <div className="space-y-4">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Full Name
-          </label>
-
-          <input
-            {...register("fullName")}
-            placeholder="Raman Singh"
-            className={inputClass}
-          />
-
-          <p className="mt-1 text-xs text-red-500">
-            {errors.fullName?.message}
-          </p>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Phone Number
-          </label>
-
-          <input
-            {...register("phone")}
-            placeholder="9812345678"
-            className={inputClass}
-          />
-
-          <p className="mt-1 text-xs text-red-500">{errors.phone?.message}</p>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            City
-          </label>
-
-          <input
-            {...register("city")}
-            placeholder="Kathmandu"
-            className={inputClass}
-          />
-
-          <p className="mt-1 text-xs text-red-500">{errors.city?.message}</p>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Address
-          </label>
-
-          <textarea
-            {...register("address")}
-            placeholder="Baneshwor, near ABC building"
-            rows={3}
-            className={inputClass}
-          />
-
-          <p className="mt-1 text-xs text-red-500">{errors.address?.message}</p>
-        </div>
-
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            {...register("isDefault")}
-            className="h-4 w-4 accent-emerald-600"
-          />
-          Save as my default address
-        </label>
-
-        <button
-          type="submit"
-          className="mt-3 w-full rounded-lg bg-emerald-600 py-3 font-semibold text-white transition hover:bg-emerald-700 active:scale-[0.98]"
-        >
-          Place Order
-        </button>
-      </div>
-    </form>
+      <p className="mt-3 text-center text-xs text-slate-400">
+        Product prices and stock will be verified securely before payment.
+      </p>
+    </section>
   );
 }

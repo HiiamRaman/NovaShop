@@ -24,3 +24,28 @@ export async function findAllCustomers() {
       createdAt: -1,
     });
 }
+
+export async function findUserByIdWithPassword(
+  userId: string
+) {
+  return User.findById(userId).select(
+    "+password"
+  );
+}
+export async function updateUserPassword(
+  userId: string,
+  passwordHash: string
+) {
+  return User.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        password: passwordHash,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+}

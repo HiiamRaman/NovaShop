@@ -1,12 +1,12 @@
-import { getProducts } from "@/services/product.service";
 import ProductCard from "@/components/product/productCard";
 import CategoryFilter from "@/components/product/categoryFilter";
-import { filterProducts } from "@/utils/productFilter";
-import { sortProducts } from "@/utils/productSort";
-import { paginateProducts } from "@/utils/productPagination";
 import SortDropdown from "@/components/product/SortDropdown";
 import Pagination from "@/components/product/Pagination";
-
+import { env } from "@/lib/env";
+import type {
+  Product,
+  ProductsResponseData,
+} from "@/types/products.types";
 
 interface ProductsPageProps {
   searchParams: Promise<{
@@ -17,31 +17,59 @@ interface ProductsPageProps {
   }>;
 }
 
-async function ProductsPage({ searchParams }: ProductsPageProps) {
-  const { search, category, sort, page } = await searchParams;
+interface ProductsApiResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+  data: ProductsResponseData;
+}
 
-  const products = await getProducts();
+export default async function ProductsPage({
+  searchParams,
+}: ProductsPageProps) {
+  const { search, category, sort, page } =
+    await searchParams;
 
-  const filteredProducts = filterProducts(products, {
-    search,
-    category,
-  });
-  const sortedProducts = sortProducts(filteredProducts, { sort });
-  const paginatedProducts = paginateProducts(sortedProducts, {
-    page,
-    limit: "8",
-  });
+  const query = new URLSearchParams();
 
-  const currentPage = Number(page) || 1;
-  const totalPages = Math.ceil(filteredProducts.length / 8);
+  if (search) {
+    query.set("search", search);
+  }
 
-  // Empty State
-  if (paginatedProducts.length === 0) {
+  if (category) {
+    query.set("categoryId", category);
+  }
+
+  if (sort) {
+    query.set("sort", sort);
+  }
+
+  query.set("page", page || "1");
+  query.set("limit", "8");
+
+  const response = await fetch(
+    `${env.APP_URL}/api/products?${query.toString()}`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch products");
+  }
+
+  const result =
+    (await response.json()) as ProductsApiResponse;
+
+  const products: Product[] = result.data.products;
+  const pagination = result.data.pagination;
+
+  if (products.length === 0) {
     return (
-      <div className="max-w-md mx-auto my-24 px-6 py-10 text-center bg-white/80 backdrop-blur-md rounded-2xl shadow-md">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-50 text-emerald-500 mb-5">
+      <div className="mx-auto my-24 max-w-md rounded-2xl bg-white/80 px-6 py-10 text-center shadow-md backdrop-blur-md">
+        <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
           <svg
-            className="w-8 h-8"
+            className="h-8 w-8"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -54,54 +82,61 @@ async function ProductsPage({ searchParams }: ProductsPageProps) {
             />
           </svg>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">No Products Found</h2>
+
+        <h2 className="text-2xl font-bold text-gray-900">
+          No Products Found
+        </h2>
+
         <p className="mt-2 text-gray-500">
-          We couldn't find matches for your selection. Try clearing your filters
-          or searches.
+          Try changing your search, category, or sorting
+          option.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 bg-gradient-to-b from-white via-slate-50 to-slate-100 rounded-xl shadow-sm">
+    <main className="mx-auto max-w-7xl rounded-xl bg-gradient-to-b from-white via-slate-50 to-slate-100 px-4 py-12 shadow-sm sm:px-6 md:py-16 lg:px-8">
       {/* Header */}
-      <div className="border-b border-gray-200 pb-6 mb-10">
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight relative inline-block">
+      <div className="mb-10 border-b border-gray-200 pb-6">
+        <h1 className="relative inline-block text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
           {search ? (
-            <span>
-              Search Results for{" "}
-              <span className="text-emerald-600 font-extrabold">
-                "{search}"
+            <>
+              Search results for{" "}
+              <span className="text-emerald-600">
+                &quot;{search}&quot;
               </span>
-            </span>
+            </>
           ) : (
             "Explore Our Products"
           )}
-          <span className="absolute -bottom-1 left-0 w-full h-1 bg-emerald-200 rounded-full"></span>
+
+          <span className="absolute -bottom-1 left-0 h-1 w-full rounded-full bg-emerald-200" />
         </h1>
-        <p className="mt-3 text-gray-600 text-sm">
-          Showing {paginatedProducts.length} of {filteredProducts.length}{" "}
-          premium items
+
+        <p className="mt-3 text-sm text-gray-600">
+          Showing {products.length} of{" "}
+          {pagination.totalProducts} products
         </p>
       </div>
 
-      {/* Filter & Sort Bar */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white/70 backdrop-blur-md p-5 rounded-2xl border border-gray-200 shadow-sm mb-10">
-        <div className="flex-grow overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+      {/* Filters */}
+      <div className="mb-10 flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white/70 p-5 shadow-sm backdrop-blur-md md:flex-row md:items-center md:justify-between">
+        <div className="flex-grow overflow-x-auto pb-1 md:pb-0">
           <CategoryFilter />
         </div>
-        <div className="flex-shrink-0 border-t md:border-t-0 pt-4 md:pt-0 border-gray-100">
+
+        <div className="flex-shrink-0 border-t border-gray-100 pt-4 md:border-t-0 md:pt-0">
           <SortDropdown />
         </div>
       </div>
 
-      {/* Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-        {paginatedProducts.map((product) => (
+      {/* Products */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-8 lg:grid-cols-3 xl:grid-cols-4">
+        {products.map((product) => (
           <div
             key={product.id}
-            className="transition-transform duration-300 hover:-translate-y-2 hover:shadow-lg rounded-xl"
+            className="rounded-xl transition duration-300 hover:-translate-y-2 hover:shadow-lg"
           >
             <ProductCard product={product} />
           </div>
@@ -109,15 +144,19 @@ async function ProductsPage({ searchParams }: ProductsPageProps) {
       </div>
 
       {/* Pagination */}
-      <div className="mt-16 pt-8 border-t border-gray-200 flex justify-center">
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          searchParams={{ search, category, sort }}
-        />
-      </div>
-    </div>
+      {pagination.totalPages > 1 && (
+        <div className="mt-16 flex justify-center border-t border-gray-200 pt-8">
+          <Pagination
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            searchParams={{
+              search,
+              category,
+              sort,
+            }}
+          />
+        </div>
+      )}
+    </main>
   );
 }
-
-export default ProductsPage;

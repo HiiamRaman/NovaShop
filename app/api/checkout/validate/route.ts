@@ -6,11 +6,11 @@ import { validateCheckout } from "@/services/checkout.service";
 import { ApiResponse } from "@/utils/ApiResponse";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { requireAuth } from "@/utils/requireAuth";
- 
+
 /*
 POST /api/checkout/validate
 
-1. Connect to MongoDB
+1. Connect to MongoD
 2. Authenticate the user
 3. Validate the request body
 4. Verify address, products, and stock

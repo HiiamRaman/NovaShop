@@ -2,7 +2,9 @@ import {
   findUserByEmail,
   createUser,
   findUserById,
-  findAllCustomers
+  findAllCustomers,
+  findUserByIdWithPassword,
+  updateUserPassword,
 } from "@/repositories/user.repository";
 import { hashPassword } from "@/lib/bcrypt";
 import type { SignupFormData } from "@/schemas/signupSchema";
@@ -20,9 +22,11 @@ import {
   rotateSessionRefreshToken,
   findActiveSessionsByUserId,
   revokeAllSessionsByUserId,
-
 } from "@/repositories/session.repository";
-import { getCustomerOrderStats,getCustomerOrderStatsById } from "@/repositories/order.repository";
+import {
+  getCustomerOrderStats,
+  getCustomerOrderStatsById,
+} from "@/repositories/order.repository";
 import { randomUUID } from "node:crypto";
 import {
   generateAccessToken,
@@ -221,8 +225,6 @@ export async function removeUserSession(
   }
 }
 
-
-
 export async function getAllCustomersForAdmin() {
   const [customers, orderStats] = await Promise.all([
     findAllCustomers(),
@@ -231,8 +233,7 @@ export async function getAllCustomersForAdmin() {
 
   return customers.map((customer) => {
     const customerStat = orderStats.find(
-      (stat) =>
-        stat._id.toString() === customer._id.toString()
+      (stat) => stat._id.toString() === customer._id.toString()
     );
 
     return {
@@ -246,9 +247,7 @@ export async function getAllCustomersForAdmin() {
   });
 }
 
-export async function getCustomerByIdForAdmin(
-  customerId: string
-) {
+export async function getCustomerByIdForAdmin(customerId: string) {
   if (!mongoose.Types.ObjectId.isValid(customerId)) {
     throw new ApiError(400, "Invalid customer ID");
   }
@@ -259,8 +258,7 @@ export async function getCustomerByIdForAdmin(
     throw new ApiError(404, "Customer not found");
   }
 
-  const orderStats =
-    await getCustomerOrderStatsById(customerId);
+  const orderStats = await getCustomerOrderStatsById(customerId);
 
   return {
     id: customer._id.toString(),
@@ -269,5 +267,38 @@ export async function getCustomerByIdForAdmin(
     orders: orderStats?.orders ?? 0,
     totalSpent: orderStats?.totalSpent ?? 0,
     joinedAt: customer.createdAt,
+  };
+}
+
+interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export async function changePassword(userId: string, data: ChangePasswordData) {
+  const user = await findUserByIdWithPassword(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+  // Confirm that the current password is correct.
+  const isCurrentPasswordCorrect = await comparePassword(
+    data.currentPassword,
+    user.password
+  );
+  if (!isCurrentPasswordCorrect) {
+    throw new ApiError(400, "Current password is incorrect");
+  }
+  // Prevent the user from reusing the same password.
+  const isSamePassword = await comparePassword(data.newPassword, user.password);
+  if (isSamePassword) {
+    throw new ApiError(
+      400,
+      "New password must be different from the current password"
+    );
+  }
+  const passwordHash = await hashPassword(data.newPassword);
+  await updateUserPassword(userId, passwordHash);
+  return {
+    changed: true,
   };
 }

@@ -105,15 +105,13 @@ export async function placeOrder(
   }
 }
 
-export async function getMyOrders(userId: string, orderId: string) {
-  if (mongoose.Types.ObjectId.isValid(orderId)) {
-    throw new ApiError(400, "Invalid order ID");
-  }
-  const orders = await findOrdersByUserId( userId)
-  if (!orders) {
-    throw new ApiError(404, "Order not found");
-  }
-    return orders.map((order) => ({
+export async function getMyOrders(
+  userId: string
+) {
+  const orders =
+    await findOrdersByUserId(userId);
+
+  return orders.map((order) => ({
     id: order._id.toString(),
     items: order.items,
     shippingAddress: order.shippingAddress,
@@ -124,9 +122,8 @@ export async function getMyOrders(userId: string, orderId: string) {
     orderStatus: order.orderStatus,
     paymentStatus: order.paymentStatus,
     createdAt: order.createdAt,
-  }));;
+  }));
 }
-
 
 export async function  getMyOrderById (userId:string,orderId:string) {
   if(!mongoose.Types.ObjectId.isValid(orderId)){

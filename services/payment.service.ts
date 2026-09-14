@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
+
 import type { CreateOrderItemData } from "@/types/order.types";
 import { env } from "@/lib/env";
 import { stripe } from "@/lib/stripe";
 import {
   findPendingOrderForPayment,
-  saveStripeCheckoutSessionId,
   markExpiredOrder,
+  saveStripeCheckoutSessionId,
 } from "@/repositories/order.repository";
 import { restoreProductStock } from "@/repositories/product.repository";
 import { ApiError } from "@/utils/ApiError";
@@ -16,19 +17,22 @@ export async function createStripeCheckout(userId: string, orderId: string) {
     throw new ApiError(400, "Invalid order ID");
   }
 
-  // Find the logged-in user's unpaid order.
+  // Find an unpaid order belonging to the logged-in user.
   const order = await findPendingOrderForPayment(orderId, userId);
 
   if (!order) {
     throw new ApiError(404, "Pending order not found");
   }
 
+  /*
+   * Reuse an existing open Stripe Session.
+   * This prevents duplicate payment pages.
+   */
   if (order.stripeCheckoutSessionId) {
     const existingSession = await stripe.checkout.sessions.retrieve(
       order.stripeCheckoutSessionId
     );
 
-    // Return the same payment page instead of creating another one.
     if (existingSession.status === "open" && existingSession.url) {
       return {
         checkoutUrl: existingSession.url,
@@ -41,51 +45,67 @@ export async function createStripeCheckout(userId: string, orderId: string) {
     );
   }
 
-  // Ask Stripe to create its hosted payment page.
+  // Create Stripe's hosted Checkout page.
   const checkoutSession = await stripe.checkout.sessions.create(
-  {
-    mode: "payment",
+    {
+      mode: "payment",
 
-    line_items: order.items.map((item: CreateOrderItemData) => ({
-      quantity: item.quantity,
+      line_items: order.items.map((item: CreateOrderItemData) => ({
+        quantity: item.quantity,
 
-      price_data: {
-        currency: order.currency.toLowerCase(),
+        price_data: {
+          currency: order.currency.toLowerCase(),
 
-        product_data: {
-          name: item.name,
-          images: item.image ? [item.image] : [],
+          product_data: {
+            name: item.name,
+
+            images: item.image ? [item.image] : [],
+          },
+
+          // NovaShop stores prices in minor units.
+          unit_amount: item.unitPrice,
         },
+      })),
 
-        unit_amount: item.unitPrice,
+      /*
+       * Stripe returns this metadata in webhook events.
+       * The webhook uses orderId to update the order.
+       */
+      metadata: {
+        orderId: order._id.toString(),
+        userId,
       },
-    })),
 
-    metadata: {
-      orderId: order._id.toString(),
-      userId,
+      /*
+       * UPDATED:
+       * The success page receives the Stripe Session ID
+       * and NovaShop order ID.
+       */
+      success_url:
+        `${env.APP_URL}/success` +
+        `?session_id={CHECKOUT_SESSION_ID}` +
+        `&order_id=${order._id.toString()}`,
+
+      cancel_url: `${env.APP_URL}/checkout`,
     },
-
-    success_url: `${env.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${env.APP_URL}/checkout`,
-  },
-  {
-    // Prevent duplicate sessions for the same order.
-    idempotencyKey: `checkout-${order._id.toString()}`,
-  }
-);
+    {
+      // Prevent duplicate Stripe Sessions for one order.
+      idempotencyKey: `checkout-${order._id.toString()}`,
+    }
+  );
 
   if (!checkoutSession.url) {
     throw new ApiError(500, "Stripe checkout URL was not created");
   }
 
-  // Connect Stripe's session with our NovaShop order.
+  // Connect the Stripe Session with the MongoDB order.
   await saveStripeCheckoutSessionId(order._id.toString(), checkoutSession.id);
 
   return {
     checkoutUrl: checkoutSession.url,
   };
 }
+
 export async function handleExpiredStripeCheckout(
   stripeCheckoutSessionId: string
 ) {
@@ -93,13 +113,19 @@ export async function handleExpiredStripeCheckout(
 
   try {
     return await mongoSession.withTransaction(async () => {
-      // Only a pending order can be expired.
+      /*
+       * Only an order that is still pending can
+       * be marked as failed and cancelled.
+       */
       const order = await markExpiredOrder(
         stripeCheckoutSessionId,
         mongoSession
       );
 
-      // The order may already be paid, failed, or previously processed.
+      /*
+       * Null means this webhook was already handled,
+       * or the order is no longer pending.
+       */
       if (!order) {
         return null;
       }

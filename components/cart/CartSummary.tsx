@@ -1,68 +1,127 @@
 "use client";
 
-import { useCartStore } from "@/store/cartStore";
 import Link from "next/link";
+import {
+  ReceiptText,
+  ShoppingBag,
+} from "lucide-react";
+
+import { useCartStore } from "@/store/cartStore";
+
 export default function CartSummary() {
   const cart = useCartStore((state) => state.cart);
 
-  const subTotal = cart.reduce((total, item) => {
-    return total + item.price * item.quantity;
-  }, 0);
+  // Calculate totals using database minor units.
+  const subtotalInMinorUnit = cart.reduce(
+    (total, item) => {
+      return (
+        total +
+        item.priceInMinorUnit * item.quantity
+      );
+    },
+    0
+  );
 
-  const totalItems = cart.reduce((total, item) => {
-    return total + item.quantity;
-  }, 0);
+  const totalItems = cart.reduce(
+    (total, item) => {
+      return total + item.quantity;
+    },
+    0
+  );
+
+  // Convert the final amount from minor units for display.
+  const subtotal = subtotalInMinorUnit / 100;
+
+  const shipping = 0;
+  const total = subtotal + shipping;
+
+  // All NovaShop cart products should use the same currency.
+  const currency = cart[0]?.currency ?? "NPR";
 
   return (
-    <div className="rounded-2xl border bg-white p-6 shadow-sm">
-      <h2 className="text-2xl font-bold text-slate-800 mb-6">Order Summary</h2>
+    <aside className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-white/20 p-2.5">
+            <ReceiptText className="h-5 w-5" />
+          </div>
 
-      <div className="space-y-4">
-        <div className="flex justify-between">
-          <span className="text-gray-600">Items</span>
+          <div>
+            <h2 className="text-xl font-bold">
+              Order Summary
+            </h2>
 
-          <span className="font-semibold">{totalItems}</span>
+            <p className="mt-1 text-sm text-emerald-100">
+              Review your purchase total
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2 text-slate-500">
+              <ShoppingBag className="h-4 w-4" />
+              Items
+            </span>
+
+            <span className="font-semibold text-slate-800">
+              {totalItems}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">
+              Subtotal
+            </span>
+
+            <span className="font-semibold text-slate-800">
+              {currency} {subtotal.toLocaleString()}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">
+              Shipping
+            </span>
+
+            <span className="font-semibold text-emerald-600">
+              Free
+            </span>
+          </div>
         </div>
 
-        <div className="flex justify-between">
-          <span className="text-gray-600">Subtotal</span>
+        <div className="my-6 border-t border-dashed border-slate-200" />
 
-          <span className="font-semibold">${subTotal.toFixed(2)}</span>
-        </div>
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-sm text-slate-500">
+              Total
+            </p>
 
-        <div className="flex justify-between">
-          <span className="text-gray-600">Shipping</span>
+            <p className="mt-1 text-xs text-slate-400">
+              Including shipping
+            </p>
+          </div>
 
-          <span className="text-emerald-600 font-semibold">Free</span>
-        </div>
-
-        <hr />
-
-        <div className="flex justify-between text-xl font-bold">
-          <span>Total</span>
-
-          <span>${subTotal.toFixed(2)}</span>
+          <p className="text-2xl font-extrabold text-slate-900">
+            {currency} {total.toLocaleString()}
+          </p>
         </div>
 
         <Link
           href="/checkout"
-          className="
-    block
-    w-full
-    mt-6
-    rounded-full
-    bg-emerald-600
-    py-3
-    text-center
-    font-semibold
-    text-white
-    transition
-    hover:bg-emerald-700
-  "
+          className="mt-7 block w-full rounded-xl bg-emerald-600 py-3.5 text-center font-bold text-white shadow-md shadow-emerald-100 transition hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-lg"
         >
           Proceed to Checkout
         </Link>
+
+        <p className="mt-4 text-center text-xs text-slate-400">
+          Final prices and stock will be verified during checkout.
+        </p>
       </div>
-    </div>
+    </aside>
   );
 }

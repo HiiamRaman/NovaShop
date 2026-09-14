@@ -1,29 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { asyncHandler } from "@/utils/asyncHandler";
-import { requireAuth } from "@/utils/requireAuth";
-import { ApiResponse } from "@/utils/ApiResponse";
+
 import { connectDB } from "@/lib/mongodb";
 import { getMyOrderById } from "@/services/order.service";
+import { ApiResponse } from "@/utils/ApiResponse";
+import { asyncHandler } from "@/utils/asyncHandler";
+import { requireAuth } from "@/utils/requireAuth";
 
-interface AuthContext {
+interface RouteContext {
   params: Promise<{
     orderId: string;
   }>;
 }
 
+/*
+GET /api/orders/[orderId]
+
+Return one order only when it belongs
+to the logged-in customer.
+*/
 export const GET = asyncHandler(
-  async (req: NextRequest, context: AuthContext): Promise<Response> => {
-    const user = requireAuth(req);
-    const { orderId } = await context.params;
+  async (request: NextRequest, context: RouteContext): Promise<Response> => {
+    const user = requireAuth(request);
+
     await connectDB();
+
+    const { orderId } = await context.params;
 
     const order = await getMyOrderById(user.sub, orderId);
 
     return NextResponse.json(
       new ApiResponse(200, "Order fetched successfully", order),
-      {
-        status: 200,
-      }
+      { status: 200 }
     );
   }
 );
