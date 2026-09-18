@@ -103,7 +103,6 @@ export async function findOrderByIdForAdmin(orderId: string) {
   return Order.findById(orderId);
 }
 
-
 interface CustomerOrderStat {
   _id: mongoose.Types.ObjectId;
   orders: number;
@@ -134,11 +133,6 @@ export async function getCustomerOrderStats() {
       },
     },
   ]);
-}
-
-interface CustomerOrderStat {
-  orders: number;
-  totalSpent: number;
 }
 
 export async function getCustomerOrderStatsById(
@@ -174,4 +168,27 @@ export async function getCustomerOrderStatsById(
   ]);
 
   return statistics[0] ?? null;
+}
+
+// Cancel only an unpaid pending order owned by the user.
+
+export async function cancelPendingOrderByUser(
+  orderId: string,
+  userId: string,
+  session: ClientSession
+) {
+  return Order.findOneAndUpdate(
+    { _id: orderId, userId, orderStatus: "pending", paymentStatus: "pending" },
+    {
+      $set: {
+        orderStatus: "cancelled",
+        paymentStatus: "failed",
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+      session,
+    }
+  );
 }
