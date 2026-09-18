@@ -14,10 +14,13 @@ import {
 import { toast } from "sonner";
 import { api } from "@/lib/apiClient";
 
-import type { Product, ProductsResponseData } from "@/types/products.types";
+import type {
+  AdminProduct,
+  AdminProductsResponseData,
+} from "@/types/products.types";
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -25,7 +28,7 @@ export default function AdminProductsPage() {
     async function loadProducts() {
       try {
         const response = await api.get("/api/admin/products");
-        const data = response.data as ProductsResponseData;
+        const data = response.data as AdminProductsResponseData;
         setProducts(data.products);
       } catch (error) {
         const message =

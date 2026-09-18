@@ -1,4 +1,4 @@
-import {
+import type {
   CreateProductData,
   Product,
   ProductImageData,
@@ -16,7 +16,7 @@ import {
 } from "@/repositories/product.repository";
 
 import { ApiError } from "@/utils/ApiError";
-import {
+import type {
   CreateProductInput,
   ProductListInput,
   UpdateProductStatusInput,
@@ -39,35 +39,21 @@ import {
 } from "@/repositories/product.repository";
 import { createSlug } from "@/utils/createSlug";
 import mongoose from "mongoose";
-import {
-  uploadImage,
-  deleteProductImages,
-  uploadProductImages,
-} from "@/lib/uploadImage";
+import { deleteProductImages, uploadProductImages } from "@/lib/uploadImage";
 import { MAX_IMAGE_COUNT } from "@/utils/validateProductImages";
 import { deleteImage } from "@/lib/uploadImage";
+
 export async function getProducts(): Promise<Product[]> {
-  const res = await fetch("https://dummyjson.com/products", {
-    next: { revalidate: 86400 },
+  const result = await getPublicProducts({
+    page: 1,
+    limit: 50,
+    sort: "newest",
   });
-  if (!res.ok) {
-    throw new Error("Failed to Fetch Products");
-  }
-  const data = await res.json();
 
-  return data.products;
+  return result.products;
 }
-
-export async function getProductById(id: number): Promise<Product | null> {
-  const res = await fetch(`https://dummyjson.com/products/${id}`, {
-    next: { revalidate: 86400 },
-  });
-  if (!res.ok) {
-    throw new Error("Failed to Fetch Product");
-  }
-
-  const data = await res.json();
-  return data;
+export async function getProductBySlug(slug: string): Promise<Product> {
+  return getPublicProductBySlug(slug);
 }
 
 export async function addProduct(
@@ -566,5 +552,3 @@ export async function reorderProductImages(
     images: updatedProduct.images,
   };
 }
-
-

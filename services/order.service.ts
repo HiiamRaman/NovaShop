@@ -7,7 +7,7 @@ import {
   findAllOrders,
   findOrderByIdForAdmin,
   cancelPendingOrderByUser,
-
+  updateOrderStatusForAdmin,
 } from "@/repositories/order.repository";
 import { restoreProductStock } from "@/repositories/product.repository";
 import type { CreateOrderData, CreateOrderItemData } from "@/types/order.types";
@@ -186,65 +186,31 @@ export async function getOrderByIdForAdmin(orderId: string) {
   };
 }
 
-export async function cancelMyOrder(
-  userId: string,
-  orderId: string
-) {
-  if (
-    !mongoose.Types.ObjectId.isValid(
-      orderId
-    )
-  ) {
-    throw new ApiError(
-      400,
-      "Invalid order ID"
-    );
+export async function cancelMyOrder(userId: string, orderId: string) {
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    throw new ApiError(400, "Invalid order ID");
   }
 
   // Check ownership and current order state.
-  const existingOrder =
-    await findOrderByIdAndUserId(
-      orderId,
-      userId
-    );
+  const existingOrder = await findOrderByIdAndUserId(orderId, userId);
 
   if (!existingOrder) {
-    throw new ApiError(
-      404,
-      "Order not found"
-    );
+    throw new ApiError(404, "Order not found");
+  }
+
+  if (existingOrder.orderStatus === "cancelled") {
+    throw new ApiError(409, "Order is already cancelled");
+  }
+
+  if (existingOrder.paymentStatus === "paid") {
+    throw new ApiError(409, "Paid orders cannot be cancelled from this page");
   }
 
   if (
-    existingOrder.orderStatus ===
-    "cancelled"
+    existingOrder.orderStatus !== "pending" ||
+    existingOrder.paymentStatus !== "pending"
   ) {
-    throw new ApiError(
-      409,
-      "Order is already cancelled"
-    );
-  }
-
-  if (
-    existingOrder.paymentStatus ===
-    "paid"
-  ) {
-    throw new ApiError(
-      409,
-      "Paid orders cannot be cancelled from this page"
-    );
-  }
-
-  if (
-    existingOrder.orderStatus !==
-      "pending" ||
-    existingOrder.paymentStatus !==
-      "pending"
-  ) {
-    throw new ApiError(
-      409,
-      "This order can no longer be cancelled"
-    );
+    throw new ApiError(409, "This order can no longer be cancelled");
   }
 
   /*
@@ -253,97 +219,143 @@ export async function cancelMyOrder(
   Expire it before changing the database so that the
   customer cannot pay for the cancelled order afterward.
   */
-  if (
-    existingOrder.stripeCheckoutSessionId
-  ) {
-    const checkoutSession =
-      await stripe.checkout.sessions.retrieve(
-        existingOrder.stripeCheckoutSessionId
-      );
+  if (existingOrder.stripeCheckoutSessionId) {
+    const checkoutSession = await stripe.checkout.sessions.retrieve(
+      existingOrder.stripeCheckoutSessionId
+    );
 
-    if (
-      checkoutSession.payment_status ===
-      "paid"
-    ) {
-      throw new ApiError(
-        409,
-        "Payment has already been completed"
-      );
+    if (checkoutSession.payment_status === "paid") {
+      throw new ApiError(409, "Payment has already been completed");
     }
 
-    if (
-      checkoutSession.status === "open"
-    ) {
-      await stripe.checkout.sessions.expire(
-        checkoutSession.id
-      );
+    if (checkoutSession.status === "open") {
+      await stripe.checkout.sessions.expire(checkoutSession.id);
     }
   }
 
-  const mongoSession =
-    await mongoose.startSession();
+  const mongoSession = await mongoose.startSession();
 
   try {
-    const cancelledOrder =
-      await mongoSession.withTransaction(
-        async () => {
-          /*
+    const cancelledOrder = await mongoSession.withTransaction(async () => {
+      /*
           This update succeeds only if the order is
           still pending and unpaid.
           */
-          const updatedOrder =
-            await cancelPendingOrderByUser(
-              orderId,
-              userId,
-              mongoSession
-            );
-
-          if (!updatedOrder) {
-            throw new ApiError(
-              409,
-              "Order status changed and it can no longer be cancelled"
-            );
-          }
-
-          // Return all reserved quantities to stock.
-          for (
-            const item of
-            existingOrder.items as CreateOrderItemData[]
-          ) {
-            const restoredProduct =
-              await restoreProductStock(
-                item.productId.toString(),
-                item.quantity,
-                mongoSession
-              );
-
-            if (!restoredProduct) {
-              throw new ApiError(
-                500,
-                `Failed to restore stock for ${item.name}`
-              );
-            }
-          }
-
-          return updatedOrder;
-        }
+      const updatedOrder = await cancelPendingOrderByUser(
+        orderId,
+        userId,
+        mongoSession
       );
+
+      if (!updatedOrder) {
+        throw new ApiError(
+          409,
+          "Order status changed and it can no longer be cancelled"
+        );
+      }
+
+      // Return all reserved quantities to stock.
+      for (const item of existingOrder.items as CreateOrderItemData[]) {
+        const restoredProduct = await restoreProductStock(
+          item.productId.toString(),
+          item.quantity,
+          mongoSession
+        );
+
+        if (!restoredProduct) {
+          throw new ApiError(500, `Failed to restore stock for ${item.name}`);
+        }
+      }
+
+      return updatedOrder;
+    });
 
     if (!cancelledOrder) {
-      throw new ApiError(
-        500,
-        "Order cancellation failed"
-      );
+      throw new ApiError(500, "Order cancellation failed");
     }
 
     return {
       id: cancelledOrder._id.toString(),
-      orderStatus:
-        cancelledOrder.orderStatus,
-      paymentStatus:
-        cancelledOrder.paymentStatus,
+      orderStatus: cancelledOrder.orderStatus,
+      paymentStatus: cancelledOrder.paymentStatus,
     };
   } finally {
     await mongoSession.endSession();
   }
 }
+
+type AdminOrderStatus = "confirmed" | "shipped" | "delivered";
+
+export async function updateOrderStatusByAdmin(
+  orderId: string,
+  nextStatus: AdminOrderStatus
+) {
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    throw new ApiError(400, "Invalid order ID");
+  }
+
+  const order = await findOrderByIdForAdmin(orderId);
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  if (order.orderStatus === "cancelled") {
+    throw new ApiError(409, "Cancelled orders cannot be updated");
+  }
+
+  if (order.orderStatus === "delivered") {
+    throw new ApiError(409, "This order has already been delivered");
+  }
+
+  // Only successfully paid orders can enter
+  // the delivery workflow.
+  if (order.paymentStatus !== "paid") {
+    throw new ApiError(409, "Only paid orders can be processed");
+  }
+
+  let expectedNextStatus: AdminOrderStatus | null = null;
+
+  if (order.orderStatus === "pending") {
+    expectedNextStatus = "confirmed";
+  }
+
+  if (order.orderStatus === "confirmed") {
+    expectedNextStatus = "shipped";
+  }
+
+  if (order.orderStatus === "shipped") {
+    expectedNextStatus = "delivered";
+  }
+
+  if (nextStatus !== expectedNextStatus) {
+    throw new ApiError(
+      409,
+      `Order must move from ${order.orderStatus} to ${
+        expectedNextStatus ?? "no further status"
+      }`
+    );
+  }
+
+  const updatedOrder = await updateOrderStatusForAdmin(
+    orderId,
+    order.orderStatus,
+    nextStatus
+  );
+
+  if (!updatedOrder) {
+    throw new ApiError(
+      409,
+      "Order status changed before this update was completed"
+    );
+  }
+
+  return {
+    id: updatedOrder._id.toString(),
+    orderStatus: updatedOrder.orderStatus,
+    paymentStatus: updatedOrder.paymentStatus,
+  };
+}
+
+
+

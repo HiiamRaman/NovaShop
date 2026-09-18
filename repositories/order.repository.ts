@@ -192,3 +192,25 @@ export async function cancelPendingOrderByUser(
     }
   );
 }
+
+export async function updateOrderStatusForAdmin(
+  orderId: string,
+  currentStatus: string,
+  nextStatus: string
+) {
+  return Order.findOneAndUpdate(
+    {
+      _id: orderId,
+      orderStatus: currentStatus,
+    },
+    {
+      $set: {
+        orderStatus: nextStatus,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+}
