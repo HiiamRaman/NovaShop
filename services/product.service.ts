@@ -1,4 +1,5 @@
 import type {
+  AdminProductQueryOptions,
   CreateProductData,
   Product,
   ProductImageData,
@@ -128,14 +129,26 @@ export async function addProduct(
   };
 }
 export async function getAdminProducts(query: ProductListInput) {
-  const { page, limit } = query;
-  // Calculate how many products MongoDB should skip
+  const { page, limit, search, sort } = query;
+
   const skip = (page - 1) * limit;
-  // Run both independent database queries together
+
+  const queryOptions: AdminProductQueryOptions = {
+    skip,
+    limit,
+    search,
+    sort,
+  };
+
+  /*
+  Fetch the current page and matching count together.
+  Both repository functions use identical filters.
+  */
   const [products, totalProducts] = await Promise.all([
-    findProducts({ skip, limit }),
-    countProducts(),
+    findProducts(queryOptions),
+    countProducts(queryOptions),
   ]);
+
   const totalPages = Math.ceil(totalProducts / limit);
 
   return {
@@ -143,17 +156,30 @@ export async function getAdminProducts(query: ProductListInput) {
       id: product._id.toString(),
       name: product.name,
       slug: product.slug,
+      description: product.description,
       brand: product.brand,
       categoryId: product.category.toString(),
       sku: product.sku,
       priceInMinorUnit: product.priceInMinorUnit,
       currency: product.currency,
       stock: product.stock,
-      images: product.images,
+
+      // Convert Mongoose image subdocuments to plain objects.
+      images: product.images.map((image) => ({
+        url: image.url,
+        publicId: image.publicId,
+        alt: image.alt,
+        position: image.position,
+      })),
+
       status: product.status,
-      createdAt: product.createdAt,
-      updatedAt: product.updatedAt,
+
+      // Return predictable API-friendly date strings.
+      createdAt: product.createdAt.toISOString(),
+
+      updatedAt: product.updatedAt.toISOString(),
     })),
+
     pagination: {
       currentPage: page,
       limit,
@@ -552,3 +578,63 @@ export async function reorderProductImages(
     images: updatedProduct.images,
   };
 }
+
+
+export async function getAdminProductById(
+  productId: string
+) {
+  if (
+    !mongoose.Types.ObjectId.isValid(
+      productId
+    )
+  ) {
+    throw new ApiError(
+      400,
+      "Invalid product ID"
+    );
+  }
+
+  const product =
+    await findProductById(productId);
+
+  if (!product) {
+    throw new ApiError(
+      404,
+      "Product not found"
+    );
+  }
+
+  return {
+    id: product._id.toString(),
+    name: product.name,
+    slug: product.slug,
+    description: product.description,
+    brand: product.brand,
+    categoryId:
+      product.category.toString(),
+    sku: product.sku,
+    priceInMinorUnit:
+      product.priceInMinorUnit,
+    currency: product.currency,
+    stock: product.stock,
+
+    // Return plain image objects.
+    images: product.images.map(
+      (image) => ({
+        url: image.url,
+        publicId: image.publicId,
+        alt: image.alt,
+        position: image.position,
+      })
+    ),
+
+    status: product.status,
+    createdAt:
+      product.createdAt.toISOString(),
+    updatedAt:
+      product.updatedAt.toISOString(),
+  };
+}
+
+
+

@@ -1,12 +1,14 @@
+import Link from "next/link";
+import { PackageSearch } from "lucide-react";
+
 import ProductCard from "@/components/product/productCard";
 import CategoryFilter from "@/components/product/categoryFilter";
 import SortDropdown from "@/components/product/SortDropdown";
 import Pagination from "@/components/product/Pagination";
+
 import { env } from "@/lib/env";
-import type {
-  Product,
-  ProductsResponseData,
-} from "@/types/products.types";
+
+import type { Product, ProductsResponseData } from "@/types/products.types";
 
 interface ProductsPageProps {
   searchParams: Promise<{
@@ -24,28 +26,19 @@ interface ProductsApiResponse {
   data: ProductsResponseData;
 }
 
+const PRODUCTS_PER_PAGE = 8;
+
 export default async function ProductsPage({
   searchParams,
 }: ProductsPageProps) {
-  const { search, category, sort, page } =
-    await searchParams;
+  const { search, category, sort, page } = await searchParams;
 
-  const query = new URLSearchParams();
-
-  if (search) {
-    query.set("search", search);
-  }
-
-  if (category) {
-    query.set("categoryId", category);
-  }
-
-  if (sort) {
-    query.set("sort", sort);
-  }
-
-  query.set("page", page || "1");
-  query.set("limit", "8");
+  const query = buildProductQuery({
+    search,
+    category,
+    sort,
+    page,
+  });
 
   const response = await fetch(
     `${env.APP_URL}/api/products?${query.toString()}`,
@@ -58,69 +51,21 @@ export default async function ProductsPage({
     throw new Error("Failed to fetch products");
   }
 
-  const result =
-    (await response.json()) as ProductsApiResponse;
+  const result = (await response.json()) as ProductsApiResponse;
 
   const products: Product[] = result.data.products;
+
   const pagination = result.data.pagination;
-
-  if (products.length === 0) {
-    return (
-      <div className="mx-auto my-24 max-w-md rounded-2xl bg-white/80 px-6 py-10 text-center shadow-md backdrop-blur-md">
-        <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
-          <svg
-            className="h-8 w-8"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.5"
-              d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        </div>
-
-        <h2 className="text-2xl font-bold text-gray-900">
-          No Products Found
-        </h2>
-
-        <p className="mt-2 text-gray-500">
-          Try changing your search, category, or sorting
-          option.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <main className="mx-auto max-w-7xl rounded-xl bg-gradient-to-b from-white via-slate-50 to-slate-100 px-4 py-12 shadow-sm sm:px-6 md:py-16 lg:px-8">
-      {/* Header */}
-      <div className="mb-10 border-b border-gray-200 pb-6">
-        <h1 className="relative inline-block text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-          {search ? (
-            <>
-              Search results for{" "}
-              <span className="text-emerald-600">
-                &quot;{search}&quot;
-              </span>
-            </>
-          ) : (
-            "Explore Our Products"
-          )}
+      <ProductsHeader
+        search={search}
+        visibleProducts={products.length}
+        totalProducts={pagination.totalProducts}
+      />
 
-          <span className="absolute -bottom-1 left-0 h-1 w-full rounded-full bg-emerald-200" />
-        </h1>
-
-        <p className="mt-3 text-sm text-gray-600">
-          Showing {products.length} of{" "}
-          {pagination.totalProducts} products
-        </p>
-      </div>
-
-      {/* Filters */}
+      {/* Filters remain visible even when no products match. */}
       <div className="mb-10 flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white/70 p-5 shadow-sm backdrop-blur-md md:flex-row md:items-center md:justify-between">
         <div className="flex-grow overflow-x-auto pb-1 md:pb-0">
           <CategoryFilter />
@@ -131,32 +76,132 @@ export default async function ProductsPage({
         </div>
       </div>
 
-      {/* Products */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-8 lg:grid-cols-3 xl:grid-cols-4">
-        {products.map((product) => (
-          <div
-            key={product.id}
-            className="rounded-xl transition duration-300 hover:-translate-y-2 hover:shadow-lg"
-          >
-            <ProductCard product={product} />
+      {products.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-8 lg:grid-cols-3 xl:grid-cols-4">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                className="rounded-xl transition duration-300 hover:-translate-y-2 hover:shadow-lg"
+              >
+                <ProductCard product={product} />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="mt-16 flex justify-center border-t border-gray-200 pt-8">
-          <Pagination
-            currentPage={pagination.currentPage}
-            totalPages={pagination.totalPages}
-            searchParams={{
-              search,
-              category,
-              sort,
-            }}
-          />
-        </div>
+          {pagination.totalPages > 1 && (
+            <div className="mt-16 flex justify-center border-t border-gray-200 pt-8">
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                searchParams={{
+                  search,
+                  category,
+                  sort,
+                }}
+              />
+            </div>
+          )}
+        </>
+      ) : (
+        <ProductsEmptyState />
       )}
     </main>
+  );
+}
+
+interface ProductQueryInput {
+  search?: string;
+  category?: string;
+  sort?: string;
+  page?: string;
+}
+
+function buildProductQuery({
+  search,
+  category,
+  sort,
+  page,
+}: ProductQueryInput) {
+  const query = new URLSearchParams();
+
+  if (search?.trim()) {
+    query.set("search", search.trim());
+  }
+
+  if (category?.trim()) {
+    /*
+    The browser uses `category`, while the API
+    expects `categoryId`.
+    */
+    query.set("categoryId", category.trim());
+  }
+
+  if (sort?.trim()) {
+    query.set("sort", sort.trim());
+  }
+
+  query.set("page", page || "1");
+
+  query.set("limit", String(PRODUCTS_PER_PAGE));
+
+  return query;
+}
+
+interface ProductsHeaderProps {
+  search?: string;
+  visibleProducts: number;
+  totalProducts: number;
+}
+
+function ProductsHeader({
+  search,
+  visibleProducts,
+  totalProducts,
+}: ProductsHeaderProps) {
+  return (
+    <header className="mb-10 border-b border-gray-200 pb-6">
+      <h1 className="relative inline-block text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+        {search ? (
+          <>
+            Search results for{" "}
+            <span className="text-emerald-600">&quot;{search}&quot;</span>
+          </>
+        ) : (
+          "Explore Our Products"
+        )}
+
+        <span className="absolute -bottom-1 left-0 h-1 w-full rounded-full bg-emerald-200" />
+      </h1>
+
+      <p className="mt-3 text-sm text-gray-600">
+        Showing {visibleProducts} of {totalProducts} products
+      </p>
+    </header>
+  );
+}
+
+function ProductsEmptyState() {
+  return (
+    <section className="mx-auto my-16 max-w-md rounded-2xl border border-slate-200 bg-white/80 px-6 py-10 text-center shadow-md backdrop-blur-md">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
+        <PackageSearch className="h-8 w-8" />
+      </div>
+
+      <h2 className="mt-5 text-2xl font-bold text-gray-900">
+        No Products Found
+      </h2>
+
+      <p className="mt-2 text-gray-500">
+        Try changing your search, category, or sorting option.
+      </p>
+
+      <Link
+        href="/products"
+        className="mt-6 inline-flex rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+      >
+        Clear Filters
+      </Link>
+    </section>
   );
 }

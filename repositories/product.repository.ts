@@ -7,7 +7,9 @@ import type {
   ProductSortOption,
   UpdateProductData,
   ProductImageData,
+  AdminProductQueryOptions,
 } from "@/types/products.types";
+
 import type { ClientSession } from "mongoose";
 export async function findProductBySlug(slug: string) {
   return Product.findOne({ slug });
@@ -20,16 +22,53 @@ export async function createProduct(data: CreateProductData) {
   return Product.create(data);
 }
 
-export async function findProducts(options: ProductPaginationOptions) {
-  const { skip, limit } = options;
-  return Product.find({ isDeleted: false })
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
+/*
+Build one shared admin filter so the list query and
+count query always use identical search conditions.
+*/
+function buildAdminProductFilter(options: AdminProductQueryOptions) {
+  const filter: Record<string, unknown> = {
+    isDeleted: false,
+  };
+
+  if (options.search) {
+    // Escape regex characters entered by the user.
+    const safeSearch = options.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const searchPattern = {
+      $regex: safeSearch,
+      $options: "i",
+    };
+
+    filter.$or = [
+      { name: searchPattern },
+      { brand: searchPattern },
+      { sku: searchPattern },
+      { slug: searchPattern },
+    ];
+  }
+
+  return filter;
 }
 
-export async function countProducts(): Promise<number> {
-  return Product.countDocuments({ isDeleted: false });
+// Fetch non-deleted products for the admin panel.
+export async function findProducts(options: AdminProductQueryOptions) {
+  const filter = buildAdminProductFilter(options);
+
+  const sort = buildProductSort(options.sort);
+
+  return Product.find(filter)
+    .sort(sort)
+    .skip(options.skip)
+    .limit(options.limit);
+}
+// Count products using exactly the same admin filter.
+export async function countProducts(
+  options: AdminProductQueryOptions
+): Promise<number> {
+  const filter = buildAdminProductFilter(options);
+
+  return Product.countDocuments(filter);
 }
 
 export async function buildPublicProductFilter(

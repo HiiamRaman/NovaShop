@@ -1,25 +1,38 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { connectDB } from "@/lib/mongodb";
-import { getPublicProducts } from "@/services/product.service";
+import { env } from "@/lib/env";
 import ProductCard from "@/components/product/productCard";
 
+import type { Product, ProductsResponseData } from "@/types/products.types";
+
+interface ProductsApiResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+  data: ProductsResponseData;
+}
+
 export default async function FeaturedProducts() {
-  // This Server Component accesses the service directly,
-  // so the database connection must be available first.
-  await connectDB();
+  /*
+  Use the public API so the Server Component receives
+  plain JSON instead of Mongoose documents.
+  */
+  const response = await fetch(
+    `${env.APP_URL}/api/products?page=1&limit=4&sort=newest`,
+    {
+      cache: "no-store",
+    }
+  );
 
-  // Fetch only the four newest active products.
-  const result = await getPublicProducts({
-    page: 1,
-    limit: 4,
-    sort: "newest",
-  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch featured products");
+  }
 
-  const featuredProducts = result.products;
+  const result = (await response.json()) as ProductsApiResponse;
 
-  // Do not render an empty homepage section.
+  const featuredProducts: Product[] = result.data.products;
+
   if (featuredProducts.length === 0) {
     return null;
   }
@@ -27,7 +40,6 @@ export default async function FeaturedProducts() {
   return (
     <section className="bg-slate-50 py-24">
       <div className="mx-auto max-w-7xl px-6">
-        {/* Section header */}
         <div className="mb-14 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-emerald-600">
@@ -45,14 +57,13 @@ export default async function FeaturedProducts() {
 
           <Link
             href="/products"
-            className="inline-flex items-center gap-2 font-semibold text-emerald-600 transition hover:text-emerald-700"
+            className="group inline-flex items-center gap-2 font-semibold text-emerald-600 transition hover:text-emerald-700"
           >
             View All Products
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         </div>
 
-        {/* Products returned by the public product service */}
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {featuredProducts.map((product) => (
             <ProductCard key={product.id} product={product} />

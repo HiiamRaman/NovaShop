@@ -6,29 +6,68 @@ export interface ApiResponse {
   errors?: unknown[];
 }
 
+/*
+Prepare the request body based on its type.
+
+- FormData is sent directly.
+- Normal objects are converted to JSON.
+*/
+function prepareBody(
+  body?: unknown
+): BodyInit | undefined {
+  if (body === undefined) {
+    return undefined;
+  }
+
+  if (body instanceof FormData) {
+    return body;
+  }
+
+  return JSON.stringify(body);
+}
+
 async function request(
   url: string,
   options: RequestInit = {}
 ): Promise<ApiResponse> {
+  const isFormData =
+    options.body instanceof FormData;
+
+  const headers =
+    new Headers(options.headers);
+
+  /*
+  Do not manually set Content-Type for FormData.
+
+  The browser must add:
+  multipart/form-data; boundary=...
+  */
+  if (
+    options.body !== undefined &&
+    !isFormData &&
+    !headers.has("Content-Type")
+  ) {
+    headers.set(
+      "Content-Type",
+      "application/json"
+    );
+  }
+
   const response = await fetch(url, {
     ...options,
-
-    // Send authentication cookies with every request.
     credentials: "include",
-
-    // Always fetch current data.
     cache: "no-store",
-
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   });
 
-  const result = (await response.json()) as ApiResponse;
+  const result =
+    (await response.json()) as ApiResponse;
 
   if (!response.ok) {
-    throw new Error(result.message || "Something went wrong");
+    throw new Error(
+      result.message ||
+        "Something went wrong"
+    );
   }
 
   return result;
@@ -41,24 +80,33 @@ export const api = {
     });
   },
 
-  post(url: string, body?: unknown) {
+  post(
+    url: string,
+    body?: unknown
+  ) {
     return request(url, {
       method: "POST",
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: prepareBody(body),
     });
   },
 
-  patch(url: string, body?: unknown) {
+  patch(
+    url: string,
+    body?: unknown
+  ) {
     return request(url, {
       method: "PATCH",
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: prepareBody(body),
     });
   },
 
-  delete(url: string, body?: unknown) {
+  delete(
+    url: string,
+    body?: unknown
+  ) {
     return request(url, {
       method: "DELETE",
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: prepareBody(body),
     });
   },
 };

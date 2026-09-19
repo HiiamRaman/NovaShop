@@ -109,3 +109,10 @@ export interface AdminProductsResponseData {
   products: AdminProduct[];
   pagination: ProductPagination;
 }
+
+export interface AdminProductQueryOptions {
+  skip: number;
+  limit: number;
+  search?: string;
+  sort: ProductSortOption;
+}
