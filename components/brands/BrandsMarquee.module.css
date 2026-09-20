@@ -1,0 +1,74 @@
+.viewport {
+  width: 100%;
+  overflow: hidden;
+  padding: 14px 0;
+  background: linear-gradient(
+    to right,
+    rgba(236, 253, 245, 0.8),
+    rgba(255, 255, 255, 0.95),
+    rgba(240, 249, 255, 0.8)
+  );
+
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 4%,
+    black 96%,
+    transparent
+  );
+
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 4%,
+    black 96%,
+    transparent
+  );
+}
+
+.trackLeft,
+.trackRight {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+
+.trackLeft {
+  animation: move-left 28s linear infinite;
+}
+
+.trackRight {
+  animation: move-right 32s linear infinite;
+}
+
+.viewport:hover .trackLeft,
+.viewport:hover .trackRight {
+  animation-play-state: paused;
+}
+
+@keyframes move-left {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes move-right {
+  from {
+    transform: translateX(-50%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trackLeft,
+  .trackRight {
+    animation: none;
+  }
+}

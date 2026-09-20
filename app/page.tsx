@@ -6,6 +6,7 @@ import Features from "@/components/Home/Features";
 import Testimonials from "@/components/Home/Testimonials";
 import Newsletter from "@/components/Home/Newsletter";
 import TickerMessage from "@/components/layout/TickerMessage";
+import BrandsSection from "@/components/brands/BrandsSection";
 export default function Home() {
   return (
     <main>
@@ -14,6 +15,7 @@ export default function Home() {
       <FeaturedProducts />
       <FeaturedCategories/>
        <Features/>
+       <BrandsSection />
        <Testimonials/>
        <Newsletter/>
     </main>
