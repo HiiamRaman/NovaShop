@@ -1,59 +1,72 @@
 "use client";
-import { useSearchParams, useRouter } from "next/navigation";
-import { ChangeEvent } from "react";
 
-function SortDropdown() {
-  const searchParams = useSearchParams();
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ArrowUpDown } from "lucide-react";
+
+const sortOptions = [
+  {
+    label: "Newest",
+    value: "newest",
+  },
+  {
+    label: "Price: Low to High",
+    value: "price-low-to-high",
+  },
+  {
+    label: "Price: High to Low",
+    value: "price-high-to-low",
+  },
+  {
+    label: "Name: A to Z",
+    value: "name-a-to-z",
+  },
+];
+
+export default function SortDropdown() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  // 1. Fixed 'any' type to use proper React HTML select event typing
-  function handleChange(e: ChangeEvent<HTMLSelectElement>) {
-    const value = e.target.value;
+  const activeSort = searchParams.get("sort") || "newest";
 
+  function handleSort(sortValue: string) {
     const params = new URLSearchParams(searchParams.toString());
-    if (value) {
-      params.set("sort", value);
-    } else {
-      params.delete("sort");
-    }
 
-    router.push(`/products?${params.toString()}`);
+    params.set("sort", sortValue);
+
+    // Sorting can change the number and order of pages.
+    params.set("page", "1");
+
+    router.push(`${pathname}?${params.toString()}`);
   }
 
-  // 2. Read current "sort" value from URL so the dropdown doesn't reset on page reload
-  const currentSort = searchParams.get("sort") || "";
-
   return (
-    <div className="relative w-full sm:w-60">
-      <select
-        value={currentSort}
-        className="w-full appearance-none bg-white border border-gray-200 text-gray-800 rounded-xl px-4 py-3 pr-10 text-sm font-medium cursor-pointer shadow-sm hover:border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200"
-        onChange={handleChange}
-      >
-        <option value="">Sort By</option>
-        <option value="price-low">Price: Low → High</option>
-        <option value="price-high">Price: High → Low</option>
-        <option value="rating">Highest Rating</option>
-      </select>
+    <div className="flex items-center gap-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+        <ArrowUpDown className="h-4 w-4" />
+      </div>
 
-      {/* 3. Custom dropdown indicator arrow (pointer-events-none lets users click through it) */}
-      <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-500">
-        <svg
-          className="h-4 w-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      <div>
+        <label
+          htmlFor="product-sort"
+          className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
+          Sort products
+        </label>
+
+        <select
+          id="product-sort"
+          value={activeSort}
+          onChange={(event) => handleSort(event.target.value)}
+          className="min-w-48 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+        >
+          {sortOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   );
 }
-
-export default SortDropdown;

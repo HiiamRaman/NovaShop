@@ -1,55 +1,37 @@
 import type { ReactNode } from "react";
-import { Bell, Search } from "lucide-react";
 
-import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminGuard from "@/components/admin/AdminGuard";
+import AdminHeader from "@/components/admin/AdminHeader";
+import AdminSidebar from "@/components/admin/AdminSidebar";
+
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default function AdminLayout({
+  children,
+}: AdminLayoutProps) {
   return (
     <AdminGuard>
-      <div className="min-h-screen bg-slate-50">
-        <div className="flex h-screen w-full overflow-hidden bg-white">
+      <div className="relative flex min-h-screen bg-slate-50">
+        {/* Sticky sidebar */}
+        <div className="sticky top-0 h-screen shrink-0 self-start">
           <AdminSidebar />
+        </div>
 
-          <div className="h-screen min-w-0 flex-1 overflow-y-auto">
-            <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-100 bg-white/95 px-7 backdrop-blur">
-              <h1 className="text-lg font-bold text-slate-900">Dashboard</h1>
+        {/* Right content */}
+        <div className="relative flex min-h-screen min-w-0 flex-1 flex-col">
+          <AdminHeader />
 
-              <div className="mx-8 hidden max-w-lg flex-1 items-center rounded-xl bg-slate-100 px-4 lg:flex">
-                <Search className="h-4 w-4 text-slate-400" />
+          <main className="relative min-w-0 flex-1 overflow-x-hidden">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.07),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(56,189,248,0.07),_transparent_26%),radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.05),_transparent_30%)]" />
 
-                <input
-                  placeholder="Search..."
-                  className="w-full bg-transparent px-3 py-3 text-sm outline-none"
-                />
-              </div>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/30 via-slate-50/60 to-slate-100/70" />
 
-              <div className="flex items-center gap-4">
-                <button className="relative text-slate-500">
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" />
-                </button>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400 font-bold text-white">
-                    A
-                  </div>
-
-                  <div className="hidden sm:block">
-                    <p className="text-sm font-semibold text-slate-800">
-                      Admin
-                    </p>
-                    <p className="text-xs text-slate-400">Store manager</p>
-                  </div>
-                </div>
-              </div>
-            </header>
-
-            <main className="bg-slate-50/70 p-6">{children}</main>
-          </div>
+            <div className="relative mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">
+              {children}
+            </div>
+          </main>
         </div>
       </div>
     </AdminGuard>

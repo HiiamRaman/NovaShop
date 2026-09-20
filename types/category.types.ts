@@ -8,3 +8,20 @@ export interface  UpdateCategoryData {
     slug?:string
     description?:string
 }
+
+
+export interface AdminCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface PublicCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+}

@@ -1,63 +1,65 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { LayoutGrid } from "lucide-react";
 
-const categories = [
-  {
-    name: "Beauty",
-    value: "beauty",
-  },
-  {
-    name: "Smartphones",
-    value: "smartphones",
-  },
-  {
-    name: "Laptops",
-    value: "laptops",
-  },
-  {
-    name: "Fragrances",
-    value: "fragrances",
-  },
-  {
-    name: "Furniture",
-    value: "furniture",
-  },
-];
+import { PublicCategory } from "@/types/category.types";
 
-export default function CategoryFilter() {
+interface CategoryFilterProps {
+  categories: PublicCategory[];
+}
+
+export default function CategoryFilter({ categories }: CategoryFilterProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+
   const activeCategory = searchParams.get("category");
 
-  function handlCategory(value: string) {
-    const params = new URLSearchParams(window.location.search);
-    params.set("category", value);
-    router.push(`/products?${params.toString()}`);
+  function handleCategory(categoryId?: string) {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (categoryId) {
+      params.set("category", categoryId);
+    } else {
+      params.delete("category");
+    }
+
+    // Return to page one whenever the filter changes.
+    params.set("page", "1");
+
+    router.push(`${pathname}?${params.toString()}`);
   }
 
   return (
-    <div className="flex gap-3 flex-wrap mb-8">
+    <div className="flex flex-wrap gap-3">
+      <button
+        type="button"
+        onClick={() => handleCategory()}
+        className={`inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition ${
+          !activeCategory
+            ? "border-emerald-600 bg-emerald-600 text-white shadow-sm shadow-emerald-200"
+            : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+        }`}
+      >
+        <LayoutGrid className="h-4 w-4" />
+        All
+      </button>
+
       {categories.map((category) => {
+        const isActive = activeCategory === category.id;
+
         return (
           <button
-            key={category.value}
-            className={`
- rounded-full
- border
- px-5
- py-2
- text-sm
- font-medium
- transition
-
- ${
-   activeCategory === category.value
-     ? "bg-emerald-600 text-white border-emerald-600"
-     : "text-slate-700 hover:bg-emerald-50"
- }
-`}
-            onClick={() => handlCategory(category.value)}
+            key={category.id}
+            type="button"
+            onClick={() => handleCategory(category.id)}
+            title={category.description}
+            className={`rounded-full border px-5 py-2.5 text-sm font-semibold transition ${
+              isActive
+                ? "border-emerald-600 bg-emerald-600 text-white shadow-sm shadow-emerald-200"
+                : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+            }`}
           >
             {category.name}
           </button>
