@@ -1,421 +1,511 @@
-NovaShop
+# NovaShop
 
-NovaShop is a production-oriented ecommerce application built with Next.js App Router, TypeScript, MongoDB, and Mongoose.
+A production-ready full-stack e-commerce platform built with Next.js, TypeScript, MongoDB, Stripe, and Cloudinary.
 
-The project is designed as both a realistic online store and a backend-engineering learning project. Its goal is to demonstrate secure authentication, layered architecture, maintainable business logic, database design, and production practices without unnecessary TypeScript complexity.
+NovaShop provides a complete customer shopping experience alongside a protected administration dashboard for managing products, categories, inventory, customers, payments, and orders.
 
-Project status: Active development. Authentication, session management, authorization, and the Category module are implemented. Product development is currently in progress.
+## Live Application
 
-Architecture
+- [Customer Store](https://nova-shop-teal.vercel.app)
+- [Admin Panel](https://nova-shop-teal.vercel.app/admin/login)
+- [GitHub Repository](https://github.com/HiiamRaman/NovaShop)
+
+> Administrator credentials are available upon request. They are not published to prevent unauthorized modification of production data.
+
+## Test Payment
+
+NovaShop currently uses Stripe Test Mode. No real payment is collected.
+
+Use the following test card during checkout:
+
+```text
+Card number: 4242 4242 4242 4242
+Expiry date: Any future date
+CVC: Any 3 digits
+```
+
+## Features
+
+### Customer Features
+
+- Account registration and login
+- Secure JWT authentication using HTTP-only cookies
+- Access and refresh token session management
+- Logout from the current session or all sessions
+- Personal profile page
+- Password change
+- Browse and search products
+- Filter products by category
+- Sort products by price, name, and date
+- Product detail pages
+- Responsive shopping cart
+- Stock-aware checkout validation
+- Saved delivery addresses
+- Set a default address
+- Edit and delete addresses
+- Stripe-hosted checkout
+- Payment confirmation through Stripe webhooks
+- Order history
+- Individual order details
+- Order cancellation for eligible unpaid orders
+- Automatic stock restoration after cancellation or checkout expiration
+
+### Admin Features
+
+- Protected admin authentication
+- Dashboard navigation
+- Product management
+- Create and update products
+- Soft-delete and restore products
+- Change product status
+- Update inventory
+- Upload, remove, and reorder product images
+- Category management
+- Activate and deactivate categories
+- Customer management
+- View all customer orders
+- View individual order details
+- Update order delivery status
+- Payment-status visibility
+- Revenue and store settings sections
+
+## Technology Stack
+
+### Frontend
+
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
+- React Hook Form
+- Zod
+- Lucide React
+- Sonner
+
+### Backend
+
+- Next.js Route Handlers
+- MongoDB
+- Mongoose
+- JWT authentication
+- bcrypt
+- Stripe Checkout
+- Stripe Webhooks
+- Cloudinary
+
+### Deployment
+
+- Vercel
+- MongoDB Atlas
+- Stripe
+- Cloudinary
+
+## Architecture
 
 NovaShop follows a layered backend architecture:
 
+```text
 Request
-↓
-Next.js Route Handler
-↓
+  ↓
+Route Handler
+  ↓
+Validation Schema
+  ↓
 Service Layer
-↓
+  ↓
 Repository Layer
-↓
+  ↓
 Mongoose Model
-↓
+  ↓
 MongoDB
+```
+
+Responsibilities are separated as follows:
+
+```text
+app/api/          HTTP routes and responses
+schemas/          Request validation
+services/         Business logic
+repositories/     Database operations
+models/           Mongoose schemas
+utils/            Authentication and shared utilities
+components/       Reusable interface components
+types/            Shared TypeScript types
+```
+
+## Project Structure
+
+```text
+NovaShop/
+├── app/
+│   ├── admin/
+│   │   ├── (dashboard)/
+│   │   │   ├── categories/
+│   │   │   ├── customers/
+│   │   │   ├── orders/
+│   │   │   ├── products/
+│   │   │   ├── revenue/
+│   │   │   └── settings/
+│   │   └── login/
+│   ├── api/
+│   │   ├── addresses/
+│   │   ├── admin/
+│   │   ├── auth/
+│   │   ├── categories/
+│   │   ├── checkout/
+│   │   ├── orders/
+│   │   ├── payment/
+│   │   └── products/
+│   ├── cart/
+│   ├── checkout/
+│   ├── orders/
+│   ├── products/
+│   ├── profile/
+│   └── success/
+├── components/
+│   ├── admin/
+│   ├── cart/
+│   ├── checkout/
+│   ├── common/
+│   ├── layout/
+│   ├── order-details/
+│   ├── product/
+│   └── profile/
+├── lib/
+├── models/
+├── repositories/
+├── schemas/
+├── services/
+├── store/
+├── types/
+└── utils/
+```
+
+## Order and Payment Workflow
+
+```text
+Customer selects products
+        ↓
+Checkout validates products, prices, address, and stock
+        ↓
+Order is created inside a MongoDB transaction
+        ↓
+Product stock is reserved
+        ↓
+Stripe Checkout Session is created
+        ↓
+Customer completes the test payment
+        ↓
+Stripe sends checkout.session.completed
+        ↓
+Webhook signature is verified
+        ↓
+Order payment status becomes paid
+```
+
+When an unpaid Stripe Checkout Session expires, NovaShop cancels the order and restores the reserved product quantities.
+
+## Order Status Workflow
+
+```text
+Pending
+   ↓
+Confirmed
+   ↓
+Shipped
+   ↓
+Delivered
+```
+
+An eligible unpaid pending order can instead become:
+
+```text
+Pending → Cancelled
+```
 
-Each layer has a focused responsibility:
+## Local Development
 
-Route handlers manage HTTP requests, authentication, validation, and responses.
+### 1. Clone the repository
 
-Services contain business rules and coordinate workflows.
-
-Repositories perform database queries.
-
-Models define and protect MongoDB document structures.
-
-Zod schemas validate untrusted API input before it reaches business logic.
-
-This project intentionally does not use a separate controller layer because Next.js Route Handlers already perform the HTTP-controller role.
-
-Technology Stack
-
-Next.js App Router
-
-TypeScript
-
-MongoDB
-
-Mongoose
-
-Zod
-
-JSON Web Tokens
-
-bcrypt
-
-React Hook Form
-
-Tailwind CSS
-
-Postman
-
-Implemented Features
-
-Authentication
-
-User registration and login
-
-Password hashing with bcrypt
-
-Access and refresh tokens
-
-HTTP-only authentication cookies
-
-Refresh-token rotation
-
-Hashed refresh-token storage
-
-Generic credential errors to reduce account discovery
-
-Current-user endpoint
-
-Logout from the current device
-
-Logout from all devices
-
-Session management
-
-Multiple-device login
-
-One database session per login/device
-
-Session-specific refresh tokens
-
-Device user-agent tracking
-
-Session expiry and revocation
-
-MongoDB TTL index for expired sessions
-
-Active-session listing
-
-Current-device identification
-
-Remote session removal
-
-Authorization
-
-Protected API routes
-
-User and admin roles
-
-Admin-only route guard
-
-Correct 401 Unauthorized and 403 Forbidden behavior
-
-Category management
-
-Admin category creation
-
-Automatic slug generation
-
-Duplicate name and slug protection
-
-Admin listing of active and inactive categories
-
-Public listing of active categories only
-
-Category activation and deactivation
-
-Partial name and description updates
-
-Automatic slug regeneration after renaming
-
-Zod and Mongoose validation
-
-API infrastructure
-
-Cached Mongoose connection for development hot reloads
-
-Consistent ApiResponse format
-
-Custom ApiError class
-
-Reusable asynchronous route wrapper
-
-Separate handling for expected, Zod, and unexpected errors
-
-Safe response objects that do not expose passwords or token hashes
-
-Current API Routes
-
-Authentication and sessions
-
-POST /api/auth/signup
-POST /api/auth/login
-POST /api/auth/refresh
-GET /api/auth/me
-POST /api/auth/logout
-POST /api/auth/logout-all
-GET /api/auth/sessions
-DELETE /api/auth/sessions/:sessionId
-
-Categories
-
-POST /api/admin/categories
-GET /api/admin/categories
-PATCH /api/admin/categories/:categoryId
-PATCH /api/admin/categories/:categoryId/status
-GET /api/categories
-
-Response Format
-
-Successful responses use a consistent structure:
-
-{
-"statusCode": 200,
-"success": true,
-"message": "Request completed successfully",
-"data": {}
-}
-
-Expected errors use:
-
-{
-"success": false,
-"message": "Error message",
-"errors": [],
-"data": null
-}
-
-Project Structure
-
-app/
-api/
-admin/
-auth/
-categories/
-
-lib/
-bcrypt.ts
-env.ts
-jwt.ts
-mongodb.ts
-tokenHash.ts
-
-models/
-Category.model.ts
-Session.model.ts
-User.model.ts
-
-repositories/
-category.repository.ts
-session.repository.ts
-user.repository.ts
-
-schemas/
-categorySchema.ts
-loginSchema.ts
-signupSchema.ts
-
-services/
-auth.service.ts
-category.service.ts
-
-types/
-category.types.ts
-session.types.ts
-token.types.ts
-user.types.ts
-
-utils/
-ApiError.ts
-ApiResponse.ts
-asyncHandler.ts
-createSlug.ts
-requireAdmin.ts
-requireAuth.ts
-
-Some filenames may use the project's existing plural naming convention, such as User.models.ts. Keep imports consistent with the actual repository.
-
-Getting Started
-
-1. Clone the repository
-
+```bash
 git clone https://github.com/HiiamRaman/NovaShop.git
 cd NovaShop
+```
 
-2. Install dependencies
+### 2. Install dependencies
 
+```bash
 npm install
+```
 
-3. Configure environment variables
+### 3. Configure environment variables
 
-Create .env.local in the project root:
+Create a `.env.local` file:
 
-MONGODB_URI=your_mongodb_connection_string
+```env
+MONGODB_URI=
 
-ACCESS_TOKEN_SECRET=your_random_secret_with_at_least_64_characters
+ACCESS_TOKEN_SECRET=
 ACCESS_TOKEN_EXPIRY=900
 
-REFRESH_TOKEN_SECRET=your_different_random_secret_with_at_least_64_characters
+REFRESH_TOKEN_SECRET=
 REFRESH_TOKEN_EXPIRY=604800
 
-Expiry values are measured in seconds:
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 
-900 = 15 minutes
-604800 = 7 days
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
 
-Use different cryptographically random secrets for access and refresh tokens. Never commit .env.local.
+APP_URL=http://localhost:3000
+```
 
-4. Start the development server
+Never commit `.env.local` or expose secret values.
 
+Generate secure token secrets with:
+
+```bash
+openssl rand -base64 64
+```
+
+### 4. Start the development server
+
+```bash
 npm run dev
+```
 
 Open:
 
+```text
 http://localhost:3000
+```
 
-API Testing
+## Local Stripe Webhook
 
-The API is currently tested with Postman. Create a Postman environment containing:
+Install and authenticate the Stripe CLI, then forward Stripe events to the local webhook:
 
-baseUrl = http://localhost:3000
+```bash
+stripe login
+```
 
-Example request:
+```bash
+stripe listen \
+  --events checkout.session.completed,checkout.session.expired \
+  --forward-to http://localhost:3000/api/payment/stripe/webhook
+```
 
-POST {{baseUrl}}/api/admin/categories
-Content-Type: application/json
+Stripe prints a local webhook signing secret:
 
-{
-"name": "Mobile Phones",
-"description": "Smartphones and mobile devices"
-}
+```text
+whsec_...
+```
 
-Postman stores the HTTP-only authentication cookies returned by the login endpoint. Log in using an admin account before testing admin routes.
+Add it to `.env.local`:
 
-Security Decisions
+```env
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
 
-Passwords are never stored or returned in plain text.
+Restart the development server after changing environment variables.
 
-confirmPassword is validated by Zod but is never stored in MongoDB.
+## Production Stripe Webhook
 
-Refresh tokens are hashed before being stored in session documents.
+The deployed Stripe webhook endpoint is:
 
-Authentication tokens are stored in HTTP-only cookies.
+```text
+https://nova-shop-teal.vercel.app/api/payment/stripe/webhook
+```
 
-Access and refresh tokens use separate secrets and token types.
+It listens for:
 
-Protected routes verify token issuer, audience, algorithm, and payload shape.
+```text
+checkout.session.completed
+checkout.session.expired
+```
 
-Admin endpoints require both authentication and authorization.
+The production webhook signing secret is stored securely in Vercel and is different from the local Stripe CLI secret.
 
-User-facing login failures use a generic message.
+## Environment Variables
 
-Repository update methods run Mongoose validators.
+| Variable                | Scope  | Purpose                          |
+| ----------------------- | ------ | -------------------------------- |
+| `MONGODB_URI`           | Server | MongoDB Atlas connection         |
+| `ACCESS_TOKEN_SECRET`   | Server | Signs short-lived access tokens  |
+| `ACCESS_TOKEN_EXPIRY`   | Server | Access-token duration            |
+| `REFRESH_TOKEN_SECRET`  | Server | Signs refresh tokens             |
+| `REFRESH_TOKEN_EXPIRY`  | Server | Refresh-token duration           |
+| `CLOUDINARY_CLOUD_NAME` | Server | Cloudinary account identifier    |
+| `CLOUDINARY_API_KEY`    | Server | Cloudinary API authentication    |
+| `CLOUDINARY_API_SECRET` | Server | Cloudinary secret                |
+| `STRIPE_SECRET_KEY`     | Server | Creates Stripe Checkout Sessions |
+| `STRIPE_WEBHOOK_SECRET` | Server | Verifies Stripe webhook requests |
+| `APP_URL`               | Server | Application base URL             |
 
-Database responses are transformed into safe API objects.
+## Main API Routes
 
-Development Roadmap
+### Authentication
 
-Product management — in progress
+```text
+POST   /api/auth/signup
+POST   /api/auth/login
+POST   /api/auth/logout
+POST   /api/auth/logout-all
+GET    /api/auth/me
+POST   /api/auth/refresh
+PATCH  /api/auth/changePassword
+```
 
-Product model and validation
+### Products and Categories
 
-Category relationship
+```text
+GET    /api/products
+GET    /api/products/[slug]
+GET    /api/categories
+```
 
-Pricing in minor currency units
+### Addresses and Orders
 
-SKU and inventory tracking
+```text
+GET    /api/addresses
+POST   /api/addresses
+PATCH  /api/addresses/[addressId]
+DELETE /api/addresses/[addressId]
 
-Product lifecycle status
+GET    /api/orders
+POST   /api/orders
+GET    /api/orders/[orderId]
+PATCH  /api/orders/[orderId]/cancel
+```
 
-Multiple product images
+### Payments
 
-Cloudinary integration
+```text
+POST   /api/checkout/validate
+POST   /api/payment/stripe/checkout
+POST   /api/payment/stripe/webhook
+```
 
-Admin product CRUD
+### Administration
 
-Public product listing and detail endpoints
+```text
+GET    /api/admin/products
+POST   /api/admin/products
+PATCH  /api/admin/products/[productId]
+DELETE /api/admin/products/[productId]
 
-Product discovery
+GET    /api/admin/categories
+POST   /api/admin/categories
+PATCH  /api/admin/categories/[categoryId]
 
-Pagination
+GET    /api/admin/orders
+GET    /api/admin/orders/[orderId]
 
-Search
+GET    /api/admin/customers
+GET    /api/admin/customers/[customerId]
+```
 
-Filtering by category, brand, price, and availability
+Administrative APIs require a valid authenticated administrator.
 
-Sorting
+## Production Build
 
-Database indexes and query optimization
+Check the production build locally:
 
-Ecommerce workflows
+```bash
+npm run build
+```
 
-Persistent cart
+Start the optimized production server:
 
-Guest-cart strategy and cart merging
+```bash
+npm start
+```
 
-Address management
+## Deployment
 
-Checkout validation
+NovaShop is deployed through Vercel and connected to the GitHub repository.
 
-Order snapshots and lifecycle
+Updates pushed to the `main` branch trigger a new production deployment:
 
-Inventory-safe order creation
+```bash
+git add .
+git commit -m "describe the update"
+git push origin main
+```
 
-Stripe payments and webhook verification
+Production secrets are configured through:
 
-Reviews and ratings
+```text
+Vercel → Project Settings → Environment Variables
+```
 
-Coupons and promotions
+They are never stored in GitHub.
 
-Production engineering
+## Security
 
-Unit and integration tests
+NovaShop includes:
 
-Rate limiting and brute-force protection
+- Password hashing with bcrypt
+- HTTP-only authentication cookies
+- Access and refresh token separation
+- Role-based administrator authorization
+- Zod request validation
+- User-owned address and order queries
+- Stripe webhook signature verification
+- MongoDB transactions for inventory-sensitive operations
+- Server-side pricing and stock validation
+- Protected administrator API routes
+- Secrets stored through environment variables
 
-Structured logging and monitoring
+## Screenshots
 
-Audit logs
+Add project screenshots inside:
 
-Redis caching
+```text
+public/screenshots/
+```
 
-Background jobs and email workers
+Suggested screenshots:
 
-Docker and CI/CD
+```text
+public/screenshots/home.png
+public/screenshots/products.png
+public/screenshots/product-details.png
+public/screenshots/checkout.png
+public/screenshots/orders.png
+public/screenshots/admin-dashboard.png
+public/screenshots/admin-products.png
+public/screenshots/admin-orders.png
+```
 
-Production deployment and backups
+Then display them here:
 
-Future AI features
+```markdown
+![NovaShop Homepage](public/screenshots/home.png)
 
-Semantic product search
+![NovaShop Products](public/screenshots/products.png)
 
-AI shopping assistant
+![NovaShop Admin Dashboard](public/screenshots/admin-dashboard.png)
+```
 
-Product recommendations
+## Future Improvements
 
-Retrieval-augmented product support chatbot
+- Email verification
+- Forgot-password and password-reset flow
+- Order confirmation emails
+- Product reviews and ratings
+- Wishlist
+- Discount coupons
+- Product variants
+- Automated testing
+- Rate limiting
+- Read-only portfolio administrator account
+- Low-stock notifications
+- Refund management
 
-User-behavior analysis
+## Author
 
-Engineering Goals
+**Raman Singh**
 
-NovaShop is being built to develop the ability to:
-
-Design secure and maintainable backend systems.
-
-Explain engineering decisions and trade-offs.
-
-Debug errors systematically.
-
-Write readable TypeScript suitable for teamwork.
-
-Protect business data at multiple validation layers.
-
-Build backend foundations that can later support AI-powered features.
-
-Author
-
-Raman Singh
-GitHub: HiiamRaman
+- GitHub: [@HiiamRaman](https://github.com/HiiamRaman)
+- Project: [NovaShop](https://nova-shop-teal.vercel.app)
